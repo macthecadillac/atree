@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter;
 use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Default)]
@@ -22,6 +23,30 @@ pub struct Tree<T> {
 }
 
 impl<T> Tree<T> {
+    pub fn root_node(&self) -> Option<&Node<T>> { self.get(NodeId(0)) }
+
+    pub fn root_node_mut(&mut self) -> Option<&mut Node<T>> {
+        self.get_mut(NodeId(0))
+    }
+
+    pub fn with_root(data: T) -> Self {
+        let root_node = Node {
+            data,
+            id: NodeId(0),
+            next_sibling: None,
+            first_child: None
+        };
+
+        Tree {
+            next_id: NodeId(1),
+            arena: iter::once((NodeId(1), root_node)).collect()
+        }
+    }
+
+    /// Create root node on tree with data. Will erase all data if tree wasn't
+    /// emtpy to begin with
+    pub fn initialize(&mut self, data: T) { *self = Tree::with_root(data) }
+
     pub fn get(&self, indx: NodeId) -> Option<&Node<T>> {
         self.arena.get(&indx)
     }
@@ -46,7 +71,9 @@ impl<T> Tree<T> {
 }
 
 impl<T> Node<T> {
-    pub fn append(&mut self, arena: &mut Tree<T>, data: T) {
+    pub fn id(&self) -> NodeId { self.id }
+
+    pub fn append<'a>(&mut self, arena: &'a mut Tree<T>, data: T) -> &'a Node<T> {
         let node_id = arena.next_id;
         arena.next_id.inc();
         if self.first_child.is_none() {
@@ -60,7 +87,8 @@ impl<T> Node<T> {
             next_sibling: None,
             first_child: None
         };
-        arena.set(node_id, node)
+        arena.set(node_id, node);
+        arena.get(node_id).unwrap()
     }
 
     pub fn siblings_ids<'a>(&self, arena: &'a Tree<T>) -> SiblingIDs<'a, T> {
