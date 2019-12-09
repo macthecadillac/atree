@@ -1,3 +1,5 @@
+// TODO: see if the custom arena provides better performance than HashMap (it
+// should)
 // TODO: add tree merging capabilities
 // TODO: add tree spliting functions
 use std::collections::HashMap;
@@ -7,6 +9,8 @@ use std::marker::PhantomData;
 // use ahash for performance reasons
 extern crate ahash;
 use ahash::ABuildHasher;
+
+mod arena;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub struct Token(usize);
