@@ -1,6 +1,9 @@
 #![allow(clippy::new_without_default)]
 use std::mem;
 
+use crate::token::Token;
+
+#[derive(Default)]
 pub struct Arena<T> {
     data: Vec<Cell<T>>,
     head: Option<usize>,
@@ -11,11 +14,6 @@ enum Cell<T> {
     Just(T),
     Nothing(Option<usize>)
 }
-
-#[derive(Clone, Copy)]
-// reference or index?
-// TODO: implement indexing by handle
-pub struct Handle(usize);
 
 impl<T> Arena<T> {
     pub fn len(&self) -> usize { self.len }
@@ -57,10 +55,11 @@ impl<T> Arena<T> {
         self.data.push(Cell::Nothing(None));
     }
 
-    pub fn insert(&mut self, data: T) -> Handle {
+    pub fn insert(&mut self, data: T) -> Token {
         match self.head {
             None => {
-                self.allocate(self.len);
+                // TODO: thik of a better way to do this
+                self.allocate(if self.len == 0 { 10 } else { self.len });
                 self.insert(data)
             },
             Some(indx) => {
@@ -69,19 +68,27 @@ impl<T> Arena<T> {
                     Some(Cell::Nothing(next_head)) => next_head
                 };
                 self.head = *next_head;
+                self.len += 1;
                 self.data[indx] = Cell::Just(data);
-                Handle(indx)
+                Token(indx)
             }
         }
     }
 
-    pub fn remove(&mut self, handle: Handle) -> Option<T> {
-        match self.data.get_mut(handle.0) {
+    pub fn set(&mut self, token: Token, data: T) -> Option<T> {
+        let out = self.remove(token);
+        self.insert(data);
+        out
+    }
+
+    pub fn remove(&mut self, token: Token) -> Option<T> {
+        match self.data.get_mut(token.0) {
             Some(Cell::Nothing(_)) | None => None,
             Some(mut cell) => {
                 let mut x = Cell::Nothing(self.head);
                 mem::swap(&mut x, &mut cell);
-                self.head = Some(handle.0);
+                self.head = Some(token.0);
+                self.len -= 1;
                 match x {
                     Cell::Just(data) => Some(data),
                     _ => panic!("something is wrong with the code")
@@ -90,15 +97,15 @@ impl<T> Arena<T> {
         }
     }
 
-    pub fn get(&self, handle: Handle) -> Option<&T> {
-        match self.data.get(handle.0) {
+    pub fn get(&self, token: Token) -> Option<&T> {
+        match self.data.get(token.0) {
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
         }
     }
 
-    pub fn get_mut(&mut self, handle: Handle) -> Option<&mut T> {
-        match self.data.get_mut(handle.0) {
+    pub fn get_mut(&mut self, token: Token) -> Option<&mut T> {
+        match self.data.get_mut(token.0) {
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
         }
