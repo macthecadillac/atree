@@ -1,4 +1,5 @@
 #![allow(clippy::new_without_default)]
+#![allow(unused)]
 use std::mem;
 
 use crate::token::Token;
@@ -16,6 +17,8 @@ enum Cell<T> {
 }
 
 impl<T> Arena<T> {
+    pub fn head(&self) -> Option<usize> { self.head }
+
     pub fn len(&self) -> usize { self.len }
 
     pub fn is_empty(&self) -> bool { self.len == 0 }
@@ -24,6 +27,10 @@ impl<T> Arena<T> {
 
     pub fn new() -> Self {
         Arena { data: Vec::new(), head: None, len: 0 }
+    }
+
+    pub fn is_valid_token(&self, token: Token) -> bool {
+        self.get(token).is_some()
     }
 
     fn find_last_available(&self) -> Option<usize> {
@@ -42,7 +49,7 @@ impl<T> Arena<T> {
         }
     }
 
-    fn allocate(&mut self, additional: usize) {
+    pub fn reserve(&mut self, additional: usize) {
         self.data.reserve_exact(additional);
         let first_new_cell_indx = self.data.len();
         match self.find_last_available() {
@@ -59,7 +66,7 @@ impl<T> Arena<T> {
         match self.head {
             None => {
                 // TODO: thik of a better way to do this
-                self.allocate(if self.len == 0 { 10 } else { self.len });
+                self.reserve(if self.len == 0 { 10 } else { self.len });
                 self.insert(data)
             },
             Some(indx) => {
