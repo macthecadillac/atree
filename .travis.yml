@@ -1,4 +1,8 @@
 language: rust
+os:
+    - linux
+    - osx
+    - windows
 rust:
     - stable
     - beta
@@ -6,4 +10,3 @@ rust:
 jobs:
     allow_failures:
         - rust: nightly
-    fast_finish: true
