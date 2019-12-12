@@ -575,6 +575,50 @@ impl Token {
         Descendents { tree, descendents: self.descendents_tokens(tree) }
     }
 
+    /// Returns an iterator of mutable references of descendent nodes (in
+    /// pre-order).
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use itree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// root_token.append(&mut tree, 2usize);
+    /// root_token.append(&mut tree, 3usize);
+    /// let third_child = root_token.append(&mut tree, 4usize);
+    /// root_token.append(&mut tree, 5usize);
+    /// third_child.append(&mut tree, 10usize);
+    /// third_child.append(&mut tree, 20usize);
+    ///
+    /// for x in root_token.descendents_mut(&mut tree) {
+    ///     x.data += 100;
+    /// }
+    ///
+    /// let mut descendents = root_token.descendents(&tree);
+    /// assert_eq!(descendents.next().unwrap().data, 102);
+    /// assert_eq!(descendents.next().unwrap().data, 103);
+    /// assert_eq!(descendents.next().unwrap().data, 104);
+    /// assert_eq!(descendents.next().unwrap().data, 110);
+    /// assert_eq!(descendents.next().unwrap().data, 120);
+    /// assert_eq!(descendents.next().unwrap().data, 105);
+    /// assert!(descendents.next().is_none());
+    /// ```
+    pub fn descendents_mut<'a, T>(self, tree: &'a mut Tree<T>)
+        -> DescendentsMut<'a, T> {
+        DescendentsMut {
+            tree: tree as *mut Tree<T>,
+            descendents: self.descendents_tokens(tree),
+            marker: PhantomData::default()
+        }
+    }
+
     /// Removes all descendents of the current node.
     pub (crate) fn remove_descendents<T>(self, tree: &mut Tree<T>) {
         for node_token in self.descendents_tokens(tree) {

@@ -52,6 +52,34 @@ impl<'a, T> Iterator for Descendents<'a, T> {
     }
 }
 
+/// An iterator of mutable references of descendents of a given node.
+///
+/// This `struct` is created by the `descendents_mut` method on [`Token`]. See
+/// its documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendents_mut
+pub struct DescendentsMut<'a, T: 'a> {
+    pub (crate) tree: *mut Tree<T>,
+    pub (crate) descendents: DescendentTokens,
+    pub (crate) marker: PhantomData<&'a mut T>
+}
+
+impl<'a, T> Iterator for DescendentsMut<'a, T> {
+    type Item = &'a mut Node<T>;
+    fn next(&mut self) -> Option<&'a mut Node<T>> {
+        match self.descendents.next() {
+            Some(node_token) => {
+                let tree = unsafe { self.tree.as_mut().unwrap() };
+                match tree.get_mut(node_token) {
+                    Some(node) => Some(node),
+                    None => None
+                }
+            },
+            None => None
+        }
+    }
+}
+
 /// An iterator of tokens of siblings that follow a given node.
 ///
 /// This `struct` is created by the `following_siblings_tokens` methods on
