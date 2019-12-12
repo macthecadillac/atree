@@ -1,9 +1,19 @@
+// mutable iterators are impossible for Node<T> due to borrow checking rules
 use crate::tree::Tree;
 use crate::token::Token;
 use crate::iter::*;
 
+/// A node holds data on the tree. `Node<T>` can be accessed by indexing
+/// [`Tree<T>`] with [`Token`], using the [`get`] or [`get_mut`] methods of
+/// `Tree<T>`, or through tree iterators.
+///
+/// [`Tree<T>`]: struct.Tree.html
+/// [`Token`]: struct.Token.html
+/// [`get`]: struct.Tree.html#method.get
+/// [`get_mut`]: struct.Tree.html#method.get_mut
 #[derive(Default, Debug)]
 pub struct Node<T> {
+    /// The `data` field
     pub data: T,
     pub (crate) token: Token,
     pub (crate) parent: Option<Token>,
@@ -18,15 +28,11 @@ impl<T> Node<T> {
 
     /// Returns an iterator of tokens of ancestor nodes.
     ///
-    /// # Panics:
-    ///
-    /// Panics if the token does not correspond to a node on the tree.
-    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
-    /// use arena_tree::Node;
+    /// use itree::Tree;
+    /// use itree::Node;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -41,21 +47,17 @@ impl<T> Node<T> {
     /// assert_eq!(ancestors_tokens.next(), Some(root_token));
     /// assert!(ancestors_tokens.next().is_none());
     /// ```
-    pub fn ancestors_tokens<'a>(&self, arena: &'a Tree<T>)
+    pub fn ancestors_tokens<'a>(&self, tree: &'a Tree<T>)
         -> AncestorTokens<'a, T> {
-        self.token.ancestors_tokens(arena)
+        self.token.ancestors_tokens(tree)
     }
 
     /// Returns an iterator of tokens of siblings preceding the current node.
     ///
-    /// # Panics:
-    ///
-    /// Panics if the token does not correspond to a node on the tree.
-    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -71,21 +73,17 @@ impl<T> Node<T> {
     /// assert_eq!(sibling_tokens.next(), Some(first_child_token));
     /// assert!(sibling_tokens.next().is_none());
     /// ```
-    pub fn preceding_siblings_tokens<'a>(&self, arena: &'a Tree<T>)
+    pub fn preceding_siblings_tokens<'a>(&self, tree: &'a Tree<T>)
         -> PrecedingSiblingTokens<'a, T> {
-        self.token.preceding_siblings_tokens(arena)
+        self.token.preceding_siblings_tokens(tree)
     }
 
     /// Returns an iterator of tokens of siblings following the current node.
     ///
-    /// # Panics:
-    ///
-    /// Panics if the token does not correspond to a node on the tree.
-    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -101,21 +99,17 @@ impl<T> Node<T> {
     /// assert_eq!(sibling_tokens.next(), Some(fourth_child_token));
     /// assert!(sibling_tokens.next().is_none());
     /// ```
-    pub fn following_siblings_tokens<'a>(&self, arena: &'a Tree<T>)
+    pub fn following_siblings_tokens<'a>(&self, tree: &'a Tree<T>)
         -> FollowingSiblingTokens<'a, T> {
-        self.token.following_siblings_tokens(arena)
+        self.token.following_siblings_tokens(tree)
     }
 
-    /// Returns an iterator of tokens of child nodes.
-    ///
-    /// # Panics:
-    ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Returns an iterator of tokens of child nodes in the order of insertion.
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -133,9 +127,9 @@ impl<T> Node<T> {
     /// assert_eq!(children_tokens.next(), Some(fourth_child_token));
     /// assert!(children_tokens.next().is_none());
     /// ```
-    pub fn children_tokens<'a>(&self, arena: &'a Tree<T>)
+    pub fn children_tokens<'a>(&self, tree: &'a Tree<T>)
         -> ChildrenTokens<'a, T> {
-        self.token.children_tokens(arena)
+        self.token.children_tokens(tree)
     }
 
     /// Returns an iterator of ancestor nodes.
@@ -143,7 +137,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -158,9 +152,9 @@ impl<T> Node<T> {
     /// assert_eq!(ancestors.next().unwrap().data, 1usize);
     /// assert!(ancestors.next().is_none());
     /// ```
-    pub fn ancestors<'a>(&self, arena: &'a Tree<T>)
+    pub fn ancestors<'a>(&self, tree: &'a Tree<T>)
         -> Ancestors<'a, T> {
-        self.token.ancestors(arena)
+        self.token.ancestors(tree)
     }
 
     /// Returns an iterator of references of sibling nodes following the current
@@ -169,7 +163,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -185,9 +179,9 @@ impl<T> Node<T> {
     /// assert_eq!(siblings.next().unwrap().data, 5usize);
     /// assert!(siblings.next().is_none());
     /// ```
-    pub fn following_siblings<'a>(&self, arena: &'a Tree<T>)
+    pub fn following_siblings<'a>(&self, tree: &'a Tree<T>)
         -> FollowingSiblings<'a, T> {
-        self.token.following_siblings(arena)
+        self.token.following_siblings(tree)
     }
 
     /// Returns an iterator of references of sibling nodes preceding the current
@@ -196,7 +190,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -212,17 +206,17 @@ impl<T> Node<T> {
     /// assert_eq!(siblings.next().unwrap().data, 2usize);
     /// assert!(siblings.next().is_none());
     /// ```
-    pub fn preceding_siblings<'a>(&self, arena: &'a Tree<T>)
+    pub fn preceding_siblings<'a>(&self, tree: &'a Tree<T>)
         -> PrecedingSiblings<'a, T> {
-        self.token.preceding_siblings(arena)
+        self.token.preceding_siblings(tree)
     }
 
-    /// Returns an iterator of child node references.
+    /// Returns an iterator of child node references in the order of insertion.
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -240,16 +234,16 @@ impl<T> Node<T> {
     /// assert_eq!(children.next().unwrap().data, 5usize);
     /// assert!(children.next().is_none());
     /// ```
-    pub fn children<'a>(&self, arena: &'a Tree<T>) -> Children<'a, T> {
-        self.token.children(arena)
+    pub fn children<'a>(&self, tree: &'a Tree<T>) -> Children<'a, T> {
+        self.token.children(tree)
     }
 
-    /// Returns an iterator of tokens of child nodes (in pre-order).
+	/// Returns an iterator of tokens of descendent nodes (in pre-order).
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -277,20 +271,16 @@ impl<T> Node<T> {
     /// assert_eq!(descendents.next(), Some(second_grandchild));
     /// assert!(descendents.next().is_none());
     /// ```
-    pub fn descendents_tokens(&self, arena: &Tree<T>) -> DescendentTokens {
-        self.token.descendents_tokens(arena)
+    pub fn descendents_tokens(&self, tree: &Tree<T>) -> DescendentTokens {
+        self.token.descendents_tokens(tree)
     }
 
-    /// Returns an iterator of references of child nodes (in pre-order).
-    ///
-    /// # Panics:
-    ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Returns an iterator of references of descendent nodes (in pre-order).
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -312,11 +302,11 @@ impl<T> Node<T> {
     /// assert_eq!(descendents.next().unwrap().data, 5);
     /// assert!(descendents.next().is_none());
     /// ```
-    pub fn descendents<'a>(&self, arena: &'a Tree<T>) -> Descendents<'a, T> {
-        self.token.descendents(arena)
+    pub fn descendents<'a>(&self, tree: &'a Tree<T>) -> Descendents<'a, T> {
+        self.token.descendents(tree)
     }
 
-    pub (crate) fn remove_descendents(&mut self, arena: &mut Tree<T>) {
-        self.token.remove_descendents(arena)
+    pub (crate) fn remove_descendents(&mut self, tree: &mut Tree<T>) {
+        self.token.remove_descendents(tree)
     }
 }

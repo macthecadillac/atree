@@ -1,3 +1,4 @@
+//! A module that contains different kinds of iterators defined on the tree.
 use std::marker::PhantomData;
 
 use crate::Tree;

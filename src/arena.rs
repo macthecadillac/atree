@@ -69,15 +69,15 @@ impl<T> Arena<T> {
                 self.reserve(if self.len == 0 { 10 } else { self.len });
                 self.insert(data)
             },
-            Some(indx) => {
-                let next_head = match self.data.get(indx) {
+            Some(index) => {
+                let next_head = match self.data.get(index) {
                     Some(Cell::Just(_)) | None => panic!("corrupt arena"),
                     Some(Cell::Nothing(next_head)) => next_head
                 };
                 self.head = *next_head;
                 self.len += 1;
-                self.data[indx] = Cell::Just(data);
-                Token(indx)
+                self.data[index] = Cell::Just(data);
+                Token { index }
             }
         }
     }
@@ -89,12 +89,12 @@ impl<T> Arena<T> {
     }
 
     pub fn remove(&mut self, token: Token) -> Option<T> {
-        match self.data.get_mut(token.0) {
+        match self.data.get_mut(token.index) {
             Some(Cell::Nothing(_)) | None => None,
             Some(mut cell) => {
                 let mut x = Cell::Nothing(self.head);
                 mem::swap(&mut x, &mut cell);
-                self.head = Some(token.0);
+                self.head = Some(token.index);
                 self.len -= 1;
                 match x {
                     Cell::Just(data) => Some(data),
@@ -105,14 +105,14 @@ impl<T> Arena<T> {
     }
 
     pub fn get(&self, token: Token) -> Option<&T> {
-        match self.data.get(token.0) {
+        match self.data.get(token.index) {
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
         }
     }
 
     pub fn get_mut(&mut self, token: Token) -> Option<&mut T> {
-        match self.data.get_mut(token.0) {
+        match self.data.get_mut(token.index) {
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
         }

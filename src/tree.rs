@@ -4,6 +4,7 @@ use crate::arena::Arena;
 use crate::node::Node;
 use crate::token::Token;
 
+/// A struct that provides the arena allocator.
 #[derive(Default)]
 pub struct Tree<T> {
     pub (crate) arena: Arena<Node<T>>
@@ -15,7 +16,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let mut tree = Tree::default();
     /// assert!(tree.is_empty());
@@ -31,7 +32,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -53,20 +54,20 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, _) = Tree::with_root(root_data);
     /// assert_eq!(tree.root_node().unwrap().data, 1);
     /// ```
-    pub fn root_node(&self) -> Option<&Node<T>> { self.get(Token(0)) }
+    pub fn root_node(&self) -> Option<&Node<T>> { self.get(Token { index: 0 }) }
 
     /// Returns a mutable reference to the root node.
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, _) = Tree::with_root(root_data);
@@ -77,7 +78,7 @@ impl<T> Tree<T> {
     /// assert_eq!(tree.root_node().unwrap().data, 3);
     /// ```
     pub fn root_node_mut(&mut self) -> Option<&mut Node<T>> {
-        self.get_mut(Token(0))
+        self.get_mut(Token { index: 0 })
     }
 
     /// Creates tree with data at the root node.
@@ -85,7 +86,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -111,7 +112,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let mut tree = Tree::default();
     /// assert!(tree.is_empty());
@@ -131,7 +132,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -150,7 +151,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -181,7 +182,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -203,7 +204,7 @@ impl<T> Tree<T> {
         }
     }
 
-    /// Removes node and all its descendents.
+    /// Removes the given node along with all its descendents.
     ///
     /// # Panics:
     ///
@@ -212,7 +213,7 @@ impl<T> Tree<T> {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -268,8 +269,6 @@ impl<T> Tree<T> {
             }
         }
     }
-
-    // pub fn shrink_to_fit(&mut self) { self.arena.shrink_to_fit() }
 }
 
 impl<T> Index<Token> for Tree<T> {

@@ -5,11 +5,14 @@ use crate::iter::*;
 use crate::node::Node;
 use crate::tree::Tree;
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Default, Debug)]
-pub struct Token(pub (crate) usize);
+/// A `Token` is a handle to a node on the tree.
+#[derive(Clone, Copy, Eq, PartialEq, Default, Debug)]
+pub struct Token{
+    pub (crate) index: usize
+}
 
 impl Token {
-    /// Inserts data into a new node and appends to the existing node.
+    /// Creates a new node with the given data and append to the given node.
     ///
     /// # Panics:
     ///
@@ -18,7 +21,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -34,7 +37,7 @@ impl Token {
     pub fn append<T>(self, tree: &mut Tree<T>, data: T) -> Token {
         fn find_head<T>(arena: &mut Arena<T>) -> Token {
             match arena.head() {
-                Some(head) => Token(head),
+                Some(head) => Token{ index: head },
                 None => {
                     arena.reserve(arena.len());
                     find_head(arena)
@@ -78,7 +81,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -109,7 +112,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -142,7 +145,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -166,7 +169,7 @@ impl Token {
         FollowingSiblingTokens { tree, node_token: next_sibling }
     }
 
-    /// Returns an iterator of tokens of child nodes.
+    /// Returns an iterator of tokens of child nodes in the order of insertion.
     ///
     /// # Panics:
     ///
@@ -175,7 +178,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -203,10 +206,14 @@ impl Token {
 
     /// Returns an iterator of ancestor nodes.
     ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -226,10 +233,14 @@ impl Token {
     /// Returns an iterator of references of sibling nodes preceding the current
     /// node.
     ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -252,10 +263,14 @@ impl Token {
     /// Returns an iterator of references of sibling nodes following the current
     /// node.
     ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -275,12 +290,16 @@ impl Token {
         FollowingSiblings { token_iter: self.following_siblings_tokens(tree) }
     }
 
-    /// Returns an iterator of child node references.
+    /// Returns an iterator of child node references in the order of insertion.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -303,10 +322,14 @@ impl Token {
 
     /// Returns an iterator of mutable ancestor node references.
     ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -346,7 +369,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -390,7 +413,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -424,7 +447,8 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of mutable references of child nodes.
+    /// Returns an iterator of mutable references of child nodes in the order of
+    /// insertion.
     ///
     /// # Panics:
     ///
@@ -433,7 +457,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -469,12 +493,16 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of tokens of child nodes (in pre-order).
+    /// Returns an iterator of tokens of descendent nodes (in pre-order).
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
     ///
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -513,7 +541,7 @@ impl Token {
         DescendentTokens { nodes, ptr: 0 }
     }
 
-    /// Returns an iterator of references of child nodes (in pre-order).
+    /// Returns an iterator of references of descendent nodes (in pre-order).
     ///
     /// # Panics:
     ///
@@ -522,7 +550,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use arena_tree::Tree;
+    /// use itree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
