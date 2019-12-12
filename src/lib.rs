@@ -127,7 +127,7 @@
 //! ```
 //!
 //! To remove a node, call the [`remove`] method on tree. Note that will also
-//! remove all descendents of the node. After removal, the "freed" memory will
+//! remove all descendants of the node. After removal, the "freed" memory will
 //! be reused if and when new data is inserted. There is currently no support
 //! for shrinking.
 //! ```

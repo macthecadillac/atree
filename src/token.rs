@@ -28,10 +28,10 @@ impl Token {
     ///
     /// let next_node_token = root_token.append(&mut tree, 2usize);
     /// next_node_token.append(&mut tree, 3usize);
-    /// let mut descendents = root_token.descendents(&tree);
+    /// let mut descendants = root_token.descendants(&tree);
     ///
-    /// assert_eq!(descendents.next().unwrap().data, 2usize);
-    /// assert_eq!(descendents.next().unwrap().data, 3usize);
+    /// assert_eq!(descendants.next().unwrap().data, 2usize);
+    /// assert_eq!(descendants.next().unwrap().data, 3usize);
     /// ```
     // TODO: find ways to put this under impl Node<T>
     pub fn append<T>(self, tree: &mut Tree<T>, data: T) -> Token {
@@ -493,7 +493,7 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of tokens of descendent nodes (in pre-order).
+    /// Returns an iterator of tokens of descendant nodes (in pre-order).
     ///
     /// # Panics:
     ///
@@ -514,21 +514,21 @@ impl Token {
     /// let second_grandchild = second_child.append(&mut tree, 20usize);
     /// let fourth_child = root_token.append(&mut tree, 5usize);
     ///
-    /// let mut descendents = root_token.descendents_tokens(&tree);
-    /// assert_eq!(descendents.next(), Some(first_child));
-    /// assert_eq!(descendents.next(), Some(second_child));
-    /// assert_eq!(descendents.next(), Some(first_grandchild));
-    /// assert_eq!(descendents.next(), Some(second_grandchild));
-    /// assert_eq!(descendents.next(), Some(third_child));
-    /// assert_eq!(descendents.next(), Some(fourth_child));
-    /// assert!(descendents.next().is_none());
+    /// let mut descendants = root_token.descendants_tokens(&tree);
+    /// assert_eq!(descendants.next(), Some(first_child));
+    /// assert_eq!(descendants.next(), Some(second_child));
+    /// assert_eq!(descendants.next(), Some(first_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_grandchild));
+    /// assert_eq!(descendants.next(), Some(third_child));
+    /// assert_eq!(descendants.next(), Some(fourth_child));
+    /// assert!(descendants.next().is_none());
     ///
-    /// let mut descendents = second_child.descendents_tokens(&tree);
-    /// assert_eq!(descendents.next(), Some(first_grandchild));
-    /// assert_eq!(descendents.next(), Some(second_grandchild));
-    /// assert!(descendents.next().is_none());
+    /// let mut descendants = second_child.descendants_tokens(&tree);
+    /// assert_eq!(descendants.next(), Some(first_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_grandchild));
+    /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendents_tokens<T>(self, tree: &Tree<T>) -> DescendentTokens {
+    pub fn descendants_tokens<T>(self, tree: &Tree<T>) -> DescendantTokens {
         fn aux<T>(token: Token, tree: &Tree<T>, acc: &mut Vec<Token>) {
             for child in token.children_tokens(tree) {
                 acc.push(child);
@@ -538,10 +538,10 @@ impl Token {
 
         let mut nodes = Vec::new();
         aux(self, tree, &mut nodes);
-        DescendentTokens { nodes, ptr: 0 }
+        DescendantTokens { nodes, ptr: 0 }
     }
 
-    /// Returns an iterator of references of descendent nodes (in pre-order).
+    /// Returns an iterator of references of descendant nodes (in pre-order).
     ///
     /// # Panics:
     ///
@@ -562,20 +562,20 @@ impl Token {
     /// third_child.append(&mut tree, 10usize);
     /// third_child.append(&mut tree, 20usize);
     ///
-    /// let mut descendents = root_token.descendents(&tree);
-    /// assert_eq!(descendents.next().unwrap().data, 2);
-    /// assert_eq!(descendents.next().unwrap().data, 3);
-    /// assert_eq!(descendents.next().unwrap().data, 4);
-    /// assert_eq!(descendents.next().unwrap().data, 10);
-    /// assert_eq!(descendents.next().unwrap().data, 20);
-    /// assert_eq!(descendents.next().unwrap().data, 5);
-    /// assert!(descendents.next().is_none());
+    /// let mut descendants = root_token.descendants(&tree);
+    /// assert_eq!(descendants.next().unwrap().data, 2);
+    /// assert_eq!(descendants.next().unwrap().data, 3);
+    /// assert_eq!(descendants.next().unwrap().data, 4);
+    /// assert_eq!(descendants.next().unwrap().data, 10);
+    /// assert_eq!(descendants.next().unwrap().data, 20);
+    /// assert_eq!(descendants.next().unwrap().data, 5);
+    /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendents<'a, T>(self, tree: &'a Tree<T>) -> Descendents<'a, T> {
-        Descendents { tree, descendents: self.descendents_tokens(tree) }
+    pub fn descendants<'a, T>(self, tree: &'a Tree<T>) -> Descendants<'a, T> {
+        Descendants { tree, descendants: self.descendants_tokens(tree) }
     }
 
-    /// Returns an iterator of mutable references of descendent nodes (in
+    /// Returns an iterator of mutable references of descendant nodes (in
     /// pre-order).
     ///
     /// # Panics:
@@ -597,31 +597,31 @@ impl Token {
     /// third_child.append(&mut tree, 10usize);
     /// third_child.append(&mut tree, 20usize);
     ///
-    /// for x in root_token.descendents_mut(&mut tree) {
+    /// for x in root_token.descendants_mut(&mut tree) {
     ///     x.data += 100;
     /// }
     ///
-    /// let mut descendents = root_token.descendents(&tree);
-    /// assert_eq!(descendents.next().unwrap().data, 102);
-    /// assert_eq!(descendents.next().unwrap().data, 103);
-    /// assert_eq!(descendents.next().unwrap().data, 104);
-    /// assert_eq!(descendents.next().unwrap().data, 110);
-    /// assert_eq!(descendents.next().unwrap().data, 120);
-    /// assert_eq!(descendents.next().unwrap().data, 105);
-    /// assert!(descendents.next().is_none());
+    /// let mut descendants = root_token.descendants(&tree);
+    /// assert_eq!(descendants.next().unwrap().data, 102);
+    /// assert_eq!(descendants.next().unwrap().data, 103);
+    /// assert_eq!(descendants.next().unwrap().data, 104);
+    /// assert_eq!(descendants.next().unwrap().data, 110);
+    /// assert_eq!(descendants.next().unwrap().data, 120);
+    /// assert_eq!(descendants.next().unwrap().data, 105);
+    /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendents_mut<'a, T>(self, tree: &'a mut Tree<T>)
-        -> DescendentsMut<'a, T> {
-        DescendentsMut {
+    pub fn descendants_mut<'a, T>(self, tree: &'a mut Tree<T>)
+        -> DescendantsMut<'a, T> {
+        DescendantsMut {
             tree: tree as *mut Tree<T>,
-            descendents: self.descendents_tokens(tree),
+            descendants: self.descendants_tokens(tree),
             marker: PhantomData::default()
         }
     }
 
-    /// Removes all descendents of the current node.
-    pub (crate) fn remove_descendents<T>(self, tree: &mut Tree<T>) {
-        for node_token in self.descendents_tokens(tree) {
+    /// Removes all descendants of the current node.
+    pub (crate) fn remove_descendants<T>(self, tree: &mut Tree<T>) {
+        for node_token in self.descendants_tokens(tree) {
             tree.arena.remove(node_token);
         }
         match tree.get_mut(self) {
@@ -635,7 +635,7 @@ impl Token {
 mod test {
     use super::*;
     #[test]
-    fn remove_descendents() {
+    fn remove_descendants() {
         let root_data = 1usize;
         let (mut tree, root_token) = Tree::with_root(root_data);
 
@@ -649,14 +649,14 @@ mod test {
 
         assert_eq!(tree.node_count(), 8);
 
-        third_child.remove_descendents(&mut tree);
+        third_child.remove_descendants(&mut tree);
 
-        let mut descendents = root_token.descendents_tokens(&tree);
-        assert_eq!(descendents.next(), Some(first_child));
-        assert_eq!(descendents.next(), Some(second_child));
-        assert_eq!(descendents.next(), Some(third_child));
-        assert_eq!(descendents.next(), Some(fourth_child));
-        assert!(descendents.next().is_none());
+        let mut descendants = root_token.descendants_tokens(&tree);
+        assert_eq!(descendants.next(), Some(first_child));
+        assert_eq!(descendants.next(), Some(second_child));
+        assert_eq!(descendants.next(), Some(third_child));
+        assert_eq!(descendants.next(), Some(fourth_child));
+        assert!(descendants.next().is_none());
 
         assert_eq!(tree.node_count(), 5);
     }

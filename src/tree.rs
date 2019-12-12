@@ -169,11 +169,11 @@ impl<T> Tree<T> {
     /// Sets data to node.
     pub (crate) fn set(&mut self, indx: Token, node: Node<T>) {
         if let Some(mut n) = self.arena.set(indx, node) {
-            n.remove_descendents(self)
+            n.remove_descendants(self)
         }
     }
 
-    /// Overwrites node with given data and removes all its descendents.
+    /// Overwrites node with given data and removes all its descendants.
     ///
     /// # Panics:
     ///
@@ -198,13 +198,13 @@ impl<T> Tree<T> {
     /// assert_eq!(tree.node_count(), 2);
     /// ```
     pub fn overwrite(&mut self, indx: Token, data: T) {
-        indx.remove_descendents(self);  // this would panic if token is invalid
+        indx.remove_descendants(self);  // this would panic if token is invalid
         if let Some(node) = self.get_mut(indx) {
             node.data = data
         }
     }
 
-    /// Removes the given node along with all its descendents.
+    /// Removes the given node along with all its descendants.
     ///
     /// # Panics:
     ///
@@ -223,12 +223,12 @@ impl<T> Tree<T> {
     /// let nnext_node2 = next_node.append(&mut tree, 4usize);
     /// 
     /// tree.remove(next_node);
-    /// let mut descendents = root_token.descendents(&tree);
-    /// assert!(descendents.next().is_none());
+    /// let mut descendants = root_token.descendants(&tree);
+    /// assert!(descendants.next().is_none());
     /// assert_eq!(tree.node_count(), 1);  // only the root node is left
     /// ```
     pub fn remove(&mut self, token: Token) {
-        token.remove_descendents(self);
+        token.remove_descendants(self);
         match self.arena.remove(token) {
             None => panic!("Invalid token"),
             Some(node) => {

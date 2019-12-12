@@ -5,19 +5,19 @@ use crate::Tree;
 use crate::node::Node;
 use crate::token::Token;
 
-/// An iterator of tokens of descendents of a given node.
+/// An iterator of tokens of descendants of a given node.
 ///
-/// This `struct` is created by the `descendents_tokens` methods on [`Token`]
+/// This `struct` is created by the `descendants_tokens` methods on [`Token`]
 /// and [`Node`]. See their documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.descendents_tokens
-/// [`Node`]: ../struct.Node.html#method.descendents_tokens
-pub struct DescendentTokens {
+/// [`Token`]: ../struct.Token.html#method.descendants_tokens
+/// [`Node`]: ../struct.Node.html#method.descendants_tokens
+pub struct DescendantTokens {
     pub (crate) nodes: Vec<Token>,
     pub (crate) ptr: usize
 }
 
-impl Iterator for DescendentTokens {
+impl Iterator for DescendantTokens {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
         match self.nodes.get(self.ptr) {
@@ -30,44 +30,44 @@ impl Iterator for DescendentTokens {
     }
 }
 
-/// An iterator of references of descendents of a given node.
+/// An iterator of references of descendants of a given node.
 ///
-/// This `struct` is created by the `descendents` methods on [`Token`]
+/// This `struct` is created by the `descendants` methods on [`Token`]
 /// and [`Node`]. See their documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.descendents
-/// [`Node`]: ../struct.Node.html#method.descendents
-pub struct Descendents<'a, T> {
+/// [`Token`]: ../struct.Token.html#method.descendants
+/// [`Node`]: ../struct.Node.html#method.descendants
+pub struct Descendants<'a, T> {
     pub (crate) tree: &'a Tree<T>,
-    pub (crate) descendents: DescendentTokens
+    pub (crate) descendants: DescendantTokens
 }
 
-impl<'a, T> Iterator for Descendents<'a, T> {
+impl<'a, T> Iterator for Descendants<'a, T> {
     type Item = &'a Node<T>;
     fn next(&mut self) -> Option<&'a Node<T>> {
-        match self.descendents.next() {
+        match self.descendants.next() {
             Some(node_token) => self.tree.get(node_token),
             None => None
         }
     }
 }
 
-/// An iterator of mutable references of descendents of a given node.
+/// An iterator of mutable references of descendants of a given node.
 ///
-/// This `struct` is created by the `descendents_mut` method on [`Token`]. See
+/// This `struct` is created by the `descendants_mut` method on [`Token`]. See
 /// its documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.descendents_mut
-pub struct DescendentsMut<'a, T: 'a> {
+/// [`Token`]: ../struct.Token.html#method.descendants_mut
+pub struct DescendantsMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
-    pub (crate) descendents: DescendentTokens,
+    pub (crate) descendants: DescendantTokens,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
-impl<'a, T> Iterator for DescendentsMut<'a, T> {
+impl<'a, T> Iterator for DescendantsMut<'a, T> {
     type Item = &'a mut Node<T>;
     fn next(&mut self) -> Option<&'a mut Node<T>> {
-        match self.descendents.next() {
+        match self.descendants.next() {
             Some(node_token) => {
                 let tree = unsafe { self.tree.as_mut().unwrap() };
                 match tree.get_mut(node_token) {
