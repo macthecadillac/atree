@@ -1,9 +1,12 @@
 # Arena based tree structure
 
+[![Build Status](https://travis-ci.com/macthecadillac/itree.svg?branch=master)](https://travis-ci.com/macthecadillac/itree)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 An arena based tree structure. Being an arena based tree, this structure is
 implemented on top of `Vec` and as such eliminates the need for the
 countless heap allocations or unsafe code that a pointer based tree
-structure would require. This approach also make parallel access feasible.
+structure would require. This approach also makes parallel access feasible.
 On top of the basic node insertion and removal operations, care is taken to
 provide various convenience functions which enable different kinds of
 immutable and mutable iterations over the nodes.
@@ -112,8 +115,8 @@ let children: Vec<_> = root_token.children(&tree).map(|x| x.data).collect();
 assert_eq!(&["Romance", "Germanic", "Slavic"], &children[..]);
 
 // Getting an iterator from a node reference (that is if you already have it
-// around). To go out of your way to get the node reference before getting
-// the iterator seems kind of dumb.
+// around. To go out of your way to get the node reference before getting
+// the iterator seems kind of dumb).
 let polish = &tree[lang3];
 let ancestors: Vec<_> = polish.ancestors(&tree).map(|x| x.data).collect();
 assert_eq!(&["Slavic", "Indo-European"], &ancestors[..]);
