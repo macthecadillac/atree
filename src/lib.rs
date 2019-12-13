@@ -128,8 +128,8 @@
 //!
 //! To remove a node, call the [`remove`] method on tree. Note that will also
 //! remove all descendants of the node. After removal, the "freed" memory will
-//! be reused if and when new data is inserted. There is currently no support
-//! for shrinking.
+//! be reused if and when new data is inserted. Call [`shrink_to_fit`] to
+//! reclaim freed memory.
 //! ```
 //! use itree::Tree;
 //!
@@ -156,9 +156,8 @@
 //! [`get`]: struct.Tree.html#method.get
 //! [`get_mut`]: struct.Tree.html#method.get_mut
 //! [`remove`]: struct.Tree.html#method.remove
-// TODO: add tree merging capabilities
-// TODO: add tree spliting functions
-// TODO: shrink to fit
+//! [`shrink_to_fit`]: struct.Tree.html#method.shrink_to_fit
+// TODO: add tree melding capabilities with a user provided function
 // TODO: use NonZeroUsize instead of usize in Token
 
 mod arena;

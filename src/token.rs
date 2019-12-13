@@ -72,6 +72,49 @@ impl Token {
         new_node_token
     }
 
+    /// Appends a sub-tree from one arena to a given node of another. It does so
+    /// by walking the tree and copying node by node to the target tree.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
+    /// # Examples:
+    /// ```
+    /// use itree::Tree;
+    ///
+    /// let root_data = "John";
+    /// let (mut tree1, root_token) = Tree::with_root(root_data);
+    ///
+    /// let node1 = root_token.append(&mut tree1, "Juan");
+    /// let node2 = root_token.append(&mut tree1, "Giovanni");
+    /// let grandchild1 = node1.append(&mut tree1, "Ivan");
+    /// let grandchild2 = node2.append(&mut tree1, "Johann");
+    ///
+    /// let mut tree2 = tree1.clone();
+    ///
+    /// // append "node1" from tree2 under "node2" in tree1
+    /// node2.append_subtree(&mut tree1, node1, &mut tree2);
+    /// let mut descendants = node2.descendants(&tree1);
+    ///
+    /// assert_eq!(descendants.next().unwrap().data, "Johann");
+    /// assert_eq!(descendants.next().unwrap().data, "Juan");
+    /// assert_eq!(descendants.next().unwrap().data, "Ivan");
+    /// assert!(descendants.next().is_none());
+    /// ```
+    pub fn append_subtree<T>(self, self_tree: &mut Tree<T>,
+                             other_token: Token, other_tree: &Tree<T>)
+        where T: Clone {
+        let data = match other_tree.get(other_token) {
+            Some(node) => node.data.clone(),
+            None => panic!("Invalid token")
+        };
+        let new_node_token = self.append(self_tree, data);
+        for child_token in other_token.children_tokens(&other_tree) {
+            new_node_token.append_subtree(self_tree, child_token, other_tree)
+        }
+    }
+
     /// Returns an iterator of tokens of ancestor nodes.
     ///
     /// # Panics:

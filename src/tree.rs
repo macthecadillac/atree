@@ -5,7 +5,7 @@ use crate::node::Node;
 use crate::token::Token;
 
 /// A struct that provides the arena allocator.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Tree<T> {
     pub (crate) arena: Arena<Node<T>>
 }
@@ -48,6 +48,26 @@ impl<T> Tree<T> {
 
     /// Returns the number of nodes the tree can hold without reallocating.
     pub fn capacity(&self) -> usize { self.arena.capacity() }
+
+
+    /// Returns the token of the root node
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use itree::Tree;
+    ///
+    /// let mut tree = Tree::default();
+    /// assert_eq!(tree.root_token(), None);
+    ///
+    /// let root_data = 1usize;
+    /// let root_token = tree.initialize(root_data);
+    /// assert_eq!(tree.root_token(), Some(root_token));
+    /// ```
+    pub fn root_token(&self) -> Option<Token> {
+        if self.is_empty() { None }
+        else { Some(Token { index: 0 }) }
+    }
 
     /// Returns a reference to the root node.
     ///
@@ -267,6 +287,65 @@ impl<T> Tree<T> {
                         | (None, Some(_), Some(_)) => panic!("Corrupt tree")
                 }
             }
+        }
+    }
+
+    /// Detaches subtree starting from the given node into its own tree.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
+    /// # Examples:
+    /// ```
+    /// use itree::Tree;
+    ///
+    /// let root_data = "a0";
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// let node1 = root_token.append(&mut tree, "a1");
+    /// let node2 = root_token.append(&mut tree, "b1");
+    /// let grandchild1 = node1.append(&mut tree, "a2");
+    /// let grandchild2 = node2.append(&mut tree, "b2");
+    ///
+    /// // split tree
+    /// let btree = tree.split_at(node2);
+    /// let btree_root = btree.root_token().unwrap();
+    ///
+    /// let atree_elt: Vec<_> = root_token.descendants(&tree)
+    ///     .map(|x| x.data).collect();
+    /// let btree_elt: Vec<_> = btree_root.descendants(&btree)
+    ///     .map(|x| x.data).collect();
+    ///
+    /// // root isn't included in iterator
+    /// assert_eq!(&["a1", "a2"], &atree_elt[..]);
+    /// assert_eq!(&["b2"], &btree_elt[..]);
+    /// ```
+    pub fn split_at(&mut self, token: Token) -> Tree<T> where T: Clone {
+        let root_data = match self.get(token) {
+            Some(node) => node.data.clone(),
+            None => panic!("Invalid token")
+        };
+        let (mut tree, root) = Tree::with_root(root_data);
+        for child_token in token.children_tokens(&self) {
+            root.append_subtree(&mut tree, child_token, self);
+        }
+        self.remove(token);
+        tree
+    }
+}
+
+/// Deep copies the tree and reclaim the space freed by prior node removals
+impl<T> Tree<T> where T: Clone {
+    pub fn shrink_to_fit(&mut self) {
+        if let Some(root) = self.root_node() {
+            let old_root_token = root.token;
+            let old_root_data = root.data.clone();
+            let (mut new_tree, root_token) = Tree::with_root(old_root_data);
+            for child_token in old_root_token.children_tokens(self) {
+                root_token.append_subtree(&mut new_tree, child_token, self);
+            }
+            *self = new_tree
         }
     }
 }

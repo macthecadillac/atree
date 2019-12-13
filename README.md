@@ -133,8 +133,9 @@ assert_eq!(tree[lang2].data, "Not romantic enough");
 
 To remove a node, call the `remove` method on tree. Note that will also
 remove all descendants of the node. After removal, the "freed" memory will
-be reused if and when new data is inserted. There is currently no support
-for shrinking.
+be reused if and when new data is inserted. Call `shrink_to_fit` to
+reclaim freed memory.
+
 ```rust
 use itree::Tree;
 

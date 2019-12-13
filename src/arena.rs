@@ -4,13 +4,14 @@ use std::mem;
 
 use crate::token::Token;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Arena<T> {
     data: Vec<Cell<T>>,
     head: Option<usize>,
     len: usize
 }
 
+#[derive(Clone)]
 enum Cell<T> {
     Just(T),
     Nothing(Option<usize>)
