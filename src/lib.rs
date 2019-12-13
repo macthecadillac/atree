@@ -3,8 +3,8 @@
 //! countless heap allocations or unsafe code that a pointer based tree
 //! structure would require. This approach also makes parallel access feasible.
 //! On top of the basic node insertion and removal operations, care is taken to
-//! provide various convenience functions which enable different kinds of
-//! immutable and mutable iterations over the nodes.
+//! provide various convenience functions which enable splitting, merging, and
+//! also different kinds of immutable and mutable iterations over the nodes.
 //!
 //! Most of the code in the crate is `unsafe` free, except for the mutable
 //! iterators, where the `unsafe` code is lifted from the core Rust

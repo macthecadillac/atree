@@ -4,11 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 An arena based tree structure. Being an arena based tree, this structure is
-implemented on top of `Vec` and as such eliminates the need for the
-countless heap allocations or unsafe code that a pointer based tree
-structure would require. This approach also makes parallel access feasible.
-On top of the basic node insertion and removal operations, care is taken to
-provide various convenience functions which enable different kinds of
+implemented on top of `Vec` and as such eliminates the need for the countless
+heap allocations or unsafe code that a pointer based tree structure would
+require. This approach also makes parallel access feasible.  On top of the basic
+node insertion and removal operations, care is taken to provide various
+convenience functions which enable splitting, merging, and different kinds of
 immutable and mutable iterations over the nodes.
 
 Most of the code in the crate is `unsafe` free, except for the mutable
@@ -153,3 +153,7 @@ assert_eq!(tree.node_count(), 7);
 tree.remove(branch2);  // boring languages anyway
 assert_eq!(tree.node_count(), 4);
 ```
+
+## License
+
+MIT
