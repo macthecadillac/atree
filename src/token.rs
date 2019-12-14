@@ -571,17 +571,17 @@ impl Token {
     /// assert_eq!(descendants.next(), Some(second_grandchild));
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants_tokens<T>(self, tree: &Tree<T>) -> DescendantTokens {
-        fn aux<T>(token: Token, tree: &Tree<T>, acc: &mut Vec<Token>) {
-            for child in token.children_tokens(tree) {
-                acc.push(child);
-                aux(child, tree, acc)
-            }
+    pub fn descendants_tokens<'a, T>(self, tree: &'a Tree<T>)
+        -> DescendantTokens<'a, T> {
+        let first_child = match tree.get(self) {
+            Some(n) => n.first_child,
+            None => panic!("Invalid token")
+        };
+        DescendantTokens {
+            tree,
+            subtree_root: self,
+            node_token: first_child,
         }
-
-        let mut nodes = Vec::new();
-        aux(self, tree, &mut nodes);
-        DescendantTokens { nodes, ptr: 0 }
     }
 
     /// Returns an iterator of references of descendant nodes (in pre-order).
@@ -664,7 +664,8 @@ impl Token {
 
     /// Removes all descendants of the current node.
     pub (crate) fn remove_descendants<T>(self, tree: &mut Tree<T>) {
-        for node_token in self.descendants_tokens(tree) {
+        let descendant_tokens: Vec<_> = self.descendants_tokens(tree).collect();
+        for node_token in descendant_tokens {
             tree.arena.remove(node_token);
         }
         match tree.get_mut(self) {

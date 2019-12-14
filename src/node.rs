@@ -271,7 +271,8 @@ impl<T> Node<T> {
     /// assert_eq!(descendants.next(), Some(second_grandchild));
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants_tokens(&self, tree: &Tree<T>) -> DescendantTokens {
+    pub fn descendants_tokens<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantTokens<'a, T> {
         self.token.descendants_tokens(tree)
     }
 

@@ -5,6 +5,8 @@ use crate::Tree;
 use crate::node::Node;
 use crate::token::Token;
 
+pub (crate) enum Branch { Sibling, Child }
+
 /// An iterator of tokens of descendants of a given node.
 ///
 /// This `struct` is created by the `descendants_tokens` methods on [`Token`]
@@ -12,20 +14,54 @@ use crate::token::Token;
 ///
 /// [`Token`]: ../struct.Token.html#method.descendants_tokens
 /// [`Node`]: ../struct.Node.html#method.descendants_tokens
-pub struct DescendantTokens {
-    pub (crate) nodes: Vec<Token>,
-    pub (crate) ptr: usize
+pub struct DescendantTokens<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) subtree_root: Token,
+    pub (crate) node_token: Option<Token>,
 }
 
-impl Iterator for DescendantTokens {
+impl<'a, T> Iterator for DescendantTokens<'a, T> {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
-        match self.nodes.get(self.ptr) {
-            None => None,
-            Some(&node_token) => {
-                self.ptr += 1;
-                Some(node_token)
-            }
+        // preorder traversal
+        let aux = |mut node_token, root, mut branch, tree: &Tree<T>|
+            loop {
+                let node = &tree[node_token];
+                match branch {
+                    Branch::Child => match node.first_child {
+                        Some(token) => break Some(token),
+                        None => branch = Branch::Sibling
+                    }
+                    Branch::Sibling => {
+                        match node.next_sibling {
+                            Some(token) => break Some(token),
+                            None => match node.parent {
+                                None => break None,
+                                Some(parent) => if parent == root {
+                                    break None
+                                } else {
+                                    node_token = parent;
+                                    branch = Branch::Sibling;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+        match self.node_token{
+            Some(token) => {
+                match self.tree.get(token) {
+                    Some(_) => {
+                        self.node_token = aux(token, self.subtree_root,
+                                              Branch::Child, self.tree);
+                        Some(token)
+                    },
+                    None => panic!("Stale token: {:?} is not found in \
+                                    the tree. Check code", token)
+                }
+            },
+            None => None
         }
     }
 }
@@ -39,7 +75,7 @@ impl Iterator for DescendantTokens {
 /// [`Node`]: ../struct.Node.html#method.descendants
 pub struct Descendants<'a, T> {
     pub (crate) tree: &'a Tree<T>,
-    pub (crate) descendants: DescendantTokens
+    pub (crate) descendants: DescendantTokens<'a, T>
 }
 
 impl<'a, T> Iterator for Descendants<'a, T> {
@@ -60,7 +96,7 @@ impl<'a, T> Iterator for Descendants<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.descendants_mut
 pub struct DescendantsMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
-    pub (crate) descendants: DescendantTokens,
+    pub (crate) descendants: DescendantTokens<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
