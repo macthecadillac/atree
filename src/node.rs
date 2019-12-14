@@ -31,8 +31,8 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
-    /// use itree::Node;
+    /// use atree::Tree;
+    /// use atree::Node;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -57,7 +57,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -83,7 +83,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -109,7 +109,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -137,7 +137,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -163,7 +163,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -190,7 +190,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -216,7 +216,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -243,7 +243,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -280,7 +280,7 @@ impl<T> Node<T> {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);

@@ -21,7 +21,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -81,7 +81,7 @@ impl Token {
     ///
     /// # Examples:
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = "John";
     /// let (mut tree1, root_token) = Tree::with_root(root_data);
@@ -124,7 +124,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -155,7 +155,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -188,7 +188,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -221,7 +221,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -256,7 +256,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -283,7 +283,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -313,7 +313,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -342,7 +342,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -372,7 +372,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -412,7 +412,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -456,7 +456,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -500,7 +500,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -545,7 +545,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -593,7 +593,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
@@ -628,7 +628,7 @@ impl Token {
     /// # Examples:
     ///
     /// ```
-    /// use itree::Tree;
+    /// use atree::Tree;
     ///
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);

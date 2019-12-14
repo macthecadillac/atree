@@ -20,7 +20,7 @@
 //! We can start by initializing an empty tree and add stuff to it at a later
 //! time:
 //! ```
-//! use itree::Tree;
+//! use atree::Tree;
 //!
 //! let mut tree = Tree::default();
 //! assert!(tree.is_empty());
@@ -33,7 +33,7 @@
 //!
 //! Another way is to directly initialize a tree with a root:
 //! ```
-//! use itree::Tree;
+//! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
 //! let (mut tree, root_token) = Tree::with_root(root_data);
@@ -44,7 +44,7 @@
 //! can't do this directly to the nodes because of the limitations of borrow
 //! checking).
 //! ```
-//! use itree::Tree;
+//! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
 //! let (mut tree, root_token) = Tree::with_root(root_data);
@@ -55,7 +55,7 @@
 //! To access/modify existing nodes on the tree, we can use indexing or
 //! [`get`]/[`get_mut`].
 //! ```
-//! use itree::Tree;
+//! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
 //! let (mut tree, root_token) = Tree::with_root(root_data);
@@ -92,7 +92,7 @@
 //! of iterators. There is a version of each of the iterators that iterates
 //! over tokens instead of node references. See the docs for details.
 //! ```
-//! use itree::Tree;
+//! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
 //! let (mut tree, root_token) = Tree::with_root(root_data);
@@ -131,7 +131,7 @@
 //! be reused if and when new data is inserted. Call [`shrink_to_fit`] to
 //! reclaim freed memory.
 //! ```
-//! use itree::Tree;
+//! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
 //! let (mut tree, root_token) = Tree::with_root(root_data);

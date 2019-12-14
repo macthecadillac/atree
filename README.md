@@ -1,6 +1,6 @@
 # Arena based tree structure
 
-[![Build Status](https://travis-ci.com/macthecadillac/itree.svg?branch=master)](https://travis-ci.com/macthecadillac/itree)
+[![Build Status](https://travis-ci.com/macthecadillac/atree.svg?branch=master)](https://travis-ci.com/macthecadillac/atree)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 An arena based tree structure. Being an arena based tree, this structure is
@@ -25,7 +25,7 @@ is a container that encapsulates the data on the tree.
 We can start by initializing an empty tree and add stuff to it at a later
 time:
 ```rust
-use itree::Tree;
+use atree::Tree;
 
 let mut tree = Tree::default();
 assert!(tree.is_empty());
@@ -38,7 +38,7 @@ assert_eq!(tree.node_count(), 1)
 
 Another way is to directly initialize a tree with a root:
 ```rust
-use itree::Tree;
+use atree::Tree;
 
 let root_data = "Indo-European";
 let (mut tree, root_token) = Tree::with_root(root_data);
@@ -49,7 +49,7 @@ To add more data to the tree, call the `append` method on the tokens (we
 can't do this directly to the nodes because of the limitations of borrow
 checking).
 ```rust
-use itree::Tree;
+use atree::Tree;
 
 let root_data = "Indo-European";
 let (mut tree, root_token) = Tree::with_root(root_data);
@@ -60,7 +60,7 @@ assert_eq!(tree.node_count(), 2);
 To access/modify existing nodes on the tree, we can use indexing or
 `get`/`get_mut`.
 ```rust
-use itree::Tree;
+use atree::Tree;
 
 let root_data = "Indo-European";
 let (mut tree, root_token) = Tree::with_root(root_data);
@@ -97,7 +97,7 @@ or the nodes. Check the documentation of `Token` or `Node<T>` for a list
 of iterators. There is a version of each of the iterators that iterates
 over tokens instead of node references. See the docs for details.
 ```rust
-use itree::Tree;
+use atree::Tree;
 
 let root_data = "Indo-European";
 let (mut tree, root_token) = Tree::with_root(root_data);
@@ -137,7 +137,7 @@ be reused if and when new data is inserted. Call `shrink_to_fit` to
 reclaim freed memory.
 
 ```rust
-use itree::Tree;
+use atree::Tree;
 
 let root_data = "Indo-European";
 let (mut tree, root_token) = Tree::with_root(root_data);
