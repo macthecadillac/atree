@@ -253,41 +253,34 @@ impl<T> Tree<T> {
         token.remove_descendants(self);
         match self.arena.remove(token) {
             None => panic!("Invalid token"),
-            Some(node) => {
-                match (node.parent, node.previous_sibling, node.next_sibling) {
-                    (Some(_), Some(otkn), Some(ytkn)) => {
-                        match self.get_mut(otkn) {
-                            Some(o) => o.next_sibling = Some(ytkn),
-                            None => panic!("Corrupt tree")
-                        }
-                        match self.get_mut(ytkn) {
-                            Some(y) => y.previous_sibling = Some(otkn),
-                            None => panic!("Corrupt tree")
-                        }
-                    },
-                    (Some(_), Some(otkn), None) => {
-                        match self.get_mut(otkn) {
-                            Some(o) => o.next_sibling = None,
-                            None => panic!("Corrupt tree")
-                        }
-                    },
-                    (Some(ptkn), None, Some(ytkn)) => {
-                        match self.get_mut(ptkn) {
-                            Some(p) => p.first_child = Some(ytkn),
-                            None => panic!("Corrupt tree")
-                        }
-                    },
-                    (Some(ptkn), None, None) => {
-                        match self.get_mut(ptkn) {
-                            Some(p) => p.first_child = None,
-                            None => panic!("Corrupt tree")
-                        }
-                    },
-                    (None, None, None) => (),  // empty tree
-                    (None, None, Some(_))
-                        | (None, Some(_), None)
-                        | (None, Some(_), Some(_)) => panic!("Corrupt tree")
-                }
+            Some(node) => match (node.parent, node.previous_sibling,
+                                 node.next_sibling) {
+                (Some(_), Some(otkn), Some(ytkn)) => {
+                    match self.get_mut(otkn) {
+                        Some(o) => o.next_sibling = Some(ytkn),
+                        None => panic!("Corrupt tree")
+                    }
+                    match self.get_mut(ytkn) {
+                        Some(y) => y.previous_sibling = Some(otkn),
+                        None => panic!("Corrupt tree")
+                    }
+                },
+                (Some(_), Some(otkn), None) => match self.get_mut(otkn) {
+                    Some(o) => o.next_sibling = None,
+                    None => panic!("Corrupt tree")
+                },
+                (Some(ptkn), None, Some(ytkn)) => match self.get_mut(ptkn) {
+                    Some(p) => p.first_child = Some(ytkn),
+                    None => panic!("Corrupt tree")
+                },
+                (Some(ptkn), None, None) => match self.get_mut(ptkn) {
+                    Some(p) => p.first_child = None,
+                    None => panic!("Corrupt tree")
+                },
+                (None, None, None) => (),  // empty tree
+                (None, None, Some(_))
+                    | (None, Some(_), None)
+                    | (None, Some(_), Some(_)) => panic!("Corrupt tree")
             }
         }
     }
@@ -362,7 +355,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next(), Some(fourth_child));
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_tokens_preord<'a>(&'a self) -> PreordTokensTraversal<'a, T> {
+    pub fn traverse_tokens_preord(&self) -> PreordTokensTraversal<T> {
         let iter = match self.root_token() {
             None => IterEmptyOr::Empty,
             Some(root) => IterEmptyOr::Iter(root.descendants_tokens_preord(self))
@@ -396,7 +389,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next().unwrap().data, 5);
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_preord<'a>(&'a self) -> PreordTraversal<'a, T> {
+    pub fn traverse_preord(&self) -> PreordTraversal<T> {
         PreordTraversal { tree: self, iter: self.traverse_tokens_preord() }
     }
 
@@ -430,7 +423,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next().unwrap().data, 105);
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_preord_mut<'a>(&'a mut self) -> PreordTraversalMut<'a, T> {
+    pub fn traverse_preord_mut(&mut self) -> PreordTraversalMut<T> {
         PreordTraversalMut {
             tree: self as *mut Tree<T>,
             iter: self.traverse_tokens_preord(),
@@ -466,8 +459,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next(), Some(root_token));
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_tokens_postord<'a>(&'a self)
-        -> PostordTokensTraversal<'a, T> {
+    pub fn traverse_tokens_postord(&self) -> PostordTokensTraversal<T> {
         let iter = match self.root_token() {
             None => IterEmptyOr::Empty,
             Some(root) => IterEmptyOr::Iter(root.descendants_tokens_postord(self))
@@ -501,8 +493,7 @@ impl<T> Tree<T> {
     /// assert_eq!(descendants.next().unwrap().data, 1);
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn traverse_postord<'a>(&'a self)
-        -> PostordTraversal<'a, T> {
+    pub fn traverse_postord(&self) -> PostordTraversal<T> {
         PostordTraversal { tree: self, iter: self.traverse_tokens_postord() }
     }
 
@@ -536,7 +527,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next().unwrap().data, 101);
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_postord_mut<'a>(&'a mut self) -> PostordTraversalMut<'a, T> {
+    pub fn traverse_postord_mut(&mut self) -> PostordTraversalMut<T> {
         PostordTraversalMut {
             tree: self as *mut Tree<T>,
             iter: self.traverse_tokens_postord(),
@@ -570,8 +561,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next(), Some(second_grandchild));
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_tokens_levelord<'a>(&'a self)
-        -> LevelordTokensTraversal<'a, T> {
+    pub fn traverse_tokens_levelord(&self) -> LevelordTokensTraversal<T> {
         let iter = match self.root_token() {
             None => IterEmptyOr::Empty,
             Some(root) => IterEmptyOr::Iter(root.descendants_tokens_levelord(self))
@@ -605,8 +595,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next().unwrap().data, 20);
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_levelord<'a>(&'a self)
-        -> LevelordTraversal<'a, T> {
+    pub fn traverse_levelord(&self) -> LevelordTraversal<T> {
         LevelordTraversal { tree: self, iter: self.traverse_tokens_levelord() }
     }
 
@@ -640,7 +629,7 @@ impl<T> Tree<T> {
     /// assert_eq!(iter.next().unwrap().data, 120);
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn traverse_levelord_mut<'a>(&'a mut self) -> LevelordTraversalMut<'a, T> {
+    pub fn traverse_levelord_mut(&mut self) -> LevelordTraversalMut<T> {
         LevelordTraversalMut {
             tree: self as *mut Tree<T>,
             iter: self.traverse_tokens_levelord(),
