@@ -1,6 +1,8 @@
 #![allow(clippy::match_bool)]
 //! A module that contains different kinds of iterators defined on the tree.
+use std::collections::VecDeque;
 use std::marker::PhantomData;
+use std::mem;
 
 use crate::Tree;
 use crate::node::Node;
@@ -103,6 +105,39 @@ pub struct DescendantsTokensPostord<'a, T> {
     pub (crate) branch: Branch
 }
 
+/// An iterator of tokens of descendants of a given node in level-order
+/// (breadth-first traversal).
+///
+/// This `struct` is created by the `descendants_tokens` methods on [`Token`]
+/// and [`Node`]. See their documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendants_tokens
+/// [`Node`]: ../struct.Node.html#method.descendants_tokens
+pub struct DescendantsTokensLevelord<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) curr_level: VecDeque<Token>,
+    pub (crate) next_level: VecDeque<Token>
+}
+
+impl<'a, T> Iterator for DescendantsTokensLevelord<'a, T> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Token> {
+        match self.curr_level.pop_front() {
+            Some(token) => {
+                self.next_level.extend(token.children_tokens(self.tree));
+                Some(token)
+            },
+            None => match self.next_level.is_empty() {
+                true => None,
+                false => {
+                    mem::swap(&mut self.curr_level, &mut self.next_level);
+                    self.next()
+                }
+            }
+        }
+    }
+}
+
 /// An iterator of references of descendants of a given node in pre-order.
 ///
 /// This `struct` is created by the `descendants` methods on [`Token`]
@@ -125,6 +160,19 @@ pub struct DescendantsPreord<'a, T> {
 pub struct DescendantsPostord<'a, T> {
     pub (crate) tree: &'a Tree<T>,
     pub (crate) descendants: DescendantsTokensPostord<'a, T>
+}
+
+/// An iterator of references of descendants of a given node in level-order
+/// (breadth-first traversal).
+///
+/// This `struct` is created by the `descendants` methods on [`Token`]
+/// and [`Node`]. See their documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendants
+/// [`Node`]: ../struct.Node.html#method.descendants
+pub struct DescendantsLevelord<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) descendants: DescendantsTokensLevelord<'a, T>
 }
 
 /// An iterator of mutable references of descendants of a given node in
@@ -150,6 +198,19 @@ pub struct DescendantsMutPreord<'a, T: 'a> {
 pub struct DescendantsMutPostord<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
     pub (crate) descendants: DescendantsTokensPostord<'a, T>,
+    pub (crate) marker: PhantomData<&'a mut T>
+}
+
+/// An iterator of mutable references of descendants of a given node in
+/// level-order (breadth-first traversal).
+///
+/// This `struct` is created by the `descendants_mut` method on [`Token`]. See
+/// its documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendants_mut
+pub struct DescendantsMutLevelord<'a, T: 'a> {
+    pub (crate) tree: *mut Tree<T>,
+    pub (crate) descendants: DescendantsTokensLevelord<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
@@ -215,8 +276,10 @@ descendant_iter!(@token struct DescendantsTokensPreord > preorder_next, subtree_
 descendant_iter!(@token struct DescendantsTokensPostord > postorder_next, subtree_root);
 descendant_iter!(@node struct DescendantsPreord);
 descendant_iter!(@node struct DescendantsPostord);
+descendant_iter!(@node struct DescendantsLevelord);
 descendant_iter!(@mut struct DescendantsMutPreord);
 descendant_iter!(@mut struct DescendantsMutPostord);
+descendant_iter!(@mut struct DescendantsMutLevelord);
 
 /// An iterator of tokens of siblings that follow a given node.
 ///
