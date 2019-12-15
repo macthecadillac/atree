@@ -245,8 +245,9 @@ impl<T> Tree<T> {
     /// let nnext_node2 = next_node.append(&mut tree, 4usize);
     /// 
     /// tree.remove(next_node);
-    /// let mut descendants = root_token.descendants_preord(&tree);
-    /// assert!(descendants.next().is_none());
+    /// let mut iter = tree.traverse_tokens_preord();
+    /// assert_eq!(iter.next(), Some(root_token));
+    /// assert!(iter.next().is_none());
     /// assert_eq!(tree.node_count(), 1);  // only the root node is left
     /// ```
     pub fn remove(&mut self, token: Token) {
@@ -296,25 +297,22 @@ impl<T> Tree<T> {
     /// use atree::Tree;
     ///
     /// let root_data = "a0";
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut atree, root_token) = Tree::with_root(root_data);
     ///
-    /// let node1 = root_token.append(&mut tree, "a1");
-    /// let node2 = root_token.append(&mut tree, "b1");
-    /// let grandchild1 = node1.append(&mut tree, "a2");
-    /// let grandchild2 = node2.append(&mut tree, "b2");
+    /// let node1 = root_token.append(&mut atree, "a1");
+    /// let node2 = root_token.append(&mut atree, "b1");
+    /// let grandchild1 = node1.append(&mut atree, "a2");
+    /// let grandchild2 = node2.append(&mut atree, "b2");
     ///
     /// // split tree
-    /// let btree = tree.split_at(node2);
+    /// let btree = atree.split_at(node2);
     /// let btree_root = btree.root_token().unwrap();
     ///
-    /// let atree_elt: Vec<_> = root_token.descendants_preord(&tree)
-    ///     .map(|x| x.data).collect();
-    /// let btree_elt: Vec<_> = btree_root.descendants_preord(&btree)
-    ///     .map(|x| x.data).collect();
+    /// let atree_elt: Vec<_> = atree.traverse_preord().map(|x| x.data).collect();
+    /// let btree_elt: Vec<_> = btree.traverse_preord().map(|x| x.data).collect();
     ///
-    /// // root isn't included in iterator
-    /// assert_eq!(&["a1", "a2"], &atree_elt[..]);
-    /// assert_eq!(&["b2"], &btree_elt[..]);
+    /// assert_eq!(&["a0", "a1", "a2"], &atree_elt[..]);
+    /// assert_eq!(&["b1", "b2"], &btree_elt[..]);
     /// ```
     pub fn split_at(&mut self, token: Token) -> Tree<T> where T: Clone {
         let root_data = match self.get(token) {

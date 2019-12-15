@@ -18,7 +18,15 @@ enum Cell<T> {
 }
 
 impl<T> Arena<T> {
-    pub fn head(&self) -> Option<usize> { self.head }
+    pub fn head(&mut self) -> Token {
+        match self.head {
+            Some(head) => Token{ index: head },
+            None => {
+                self.reserve(self.len());
+                self.head()
+            }
+        }
+    }
 
     pub fn len(&self) -> usize { self.len }
 

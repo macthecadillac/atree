@@ -2,7 +2,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
 
-use crate::arena::Arena;
 use crate::iter::*;
 use crate::node::Node;
 use crate::tree::Tree;
@@ -36,17 +35,7 @@ impl Token {
     /// assert_eq!(descendants.next().unwrap().data, 3usize);
     /// ```
     pub fn append<T>(self, tree: &mut Tree<T>, data: T) -> Token {
-        fn find_head<T>(arena: &mut Arena<T>) -> Token {
-            match arena.head() {
-                Some(head) => Token{ index: head },
-                None => {
-                    arena.reserve(arena.len());
-                    find_head(arena)
-                }
-            }
-        }
-
-        let new_node_token = find_head(&mut tree.arena);
+        let new_node_token = tree.arena.head();
         let previous_sibling = match self.children_mut(tree).last() {
             None => {
                 match tree.get_mut(self) {
@@ -113,12 +102,12 @@ impl Token {
                 let mut index_map: HashMap<Token, Token> = HashMap::new();
                 index_map.insert(other_token, new_subtree_root);
 
-                let mut tmp = vec![other_token];
+                let mut stack = vec![other_token];
                 let mut branch = Branch::Child;
 
                 loop {
-                    let &token = tmp.last().unwrap(); // never fails
-                    let node = &other_tree[token];
+                    let &token = stack.last().unwrap(); // never fails
+                    let node = &other_tree[token];  // already checked
                     match branch {
                         Branch::Child => match node.first_child {
                             None => branch = Branch::Sibling,
@@ -131,15 +120,15 @@ impl Token {
                                 let new_child_token =
                                     new_parent.append(self_tree, child_data);
                                 index_map.insert(child, new_child_token);
-                                tmp.push(child);
+                                stack.push(child);
                             }
                         },
-                        Branch::Sibling => match Some(other_token) == tmp.pop() {
+                        Branch::Sibling => match Some(other_token) == stack.pop() {
                             true => break,
                             false => match node.next_sibling {
                                 None => (),
                                 Some(sibling) => {
-                                    tmp.push(sibling);
+                                    stack.push(sibling);
                                     branch = Branch::Child;
                                 }
                             }
@@ -148,6 +137,132 @@ impl Token {
                 }
             }
         }
+    }
+
+    /// Creates a new node with the given data and set as the previous sibling
+    /// of the current node.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// let child2 = root_token.append(&mut tree, 3usize);
+    /// let child4 = root_token.append(&mut tree, 5usize);
+    /// child2.append(&mut tree, 10usize);
+    /// // insert in between children 2 and 4
+    /// let child3 = child4.insert_before(&mut tree, 4usize);
+    /// // insert before child 2
+    /// let child1 = child2.insert_before(&mut tree, 2usize);
+    ///
+    /// let descendants: Vec<_> = root_token.descendants_preord(&tree)
+    ///     .map(|x| x.data)
+    ///     .collect();
+    /// assert_eq!(&[2usize, 3, 10, 4, 5], &descendants[..]);
+    /// ```
+    pub fn insert_before<T>(self, tree: &mut Tree<T>, data: T) -> Token {
+        let new_node_token = tree.arena.head();
+        let (self_parent, self_previous_sibling) = match tree.get(self) {
+            None => panic!("Invalid token"),
+            Some(node) => (node.parent, node.previous_sibling)
+        };
+        tree[self].previous_sibling = Some(new_node_token);  // already checked
+        let previous_sibling = match self_previous_sibling {
+            Some(sibling) => match tree.get_mut(sibling) {
+                None => panic!("Corrupt tree"),
+                Some(ref mut node) => {
+                    node.next_sibling = Some(new_node_token);
+                    Some(sibling)
+                }
+            },
+            None => match self_parent {
+                None => panic!("Cannot insert as the previous sibling of the \
+                                root node"),
+                Some(p) => match tree.get_mut(p) {
+                    None => panic!("Corrupt tree"),
+                    Some(ref mut node) => {
+                        node.first_child = Some(new_node_token);
+                        None
+                    }
+                }
+            }
+        };
+
+        let node = Node {
+            data,
+            token: new_node_token,
+            parent: self_parent,
+            previous_sibling,
+            next_sibling: Some(self),
+            first_child: None
+        };
+        tree.set(new_node_token, node);
+        new_node_token
+    }
+
+    /// Creates a new node with the given data and set as the next sibling of
+    /// the current node.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// let child1 = root_token.append(&mut tree, 2usize);
+    /// let child3 = root_token.append(&mut tree, 4usize);
+    /// child1.append(&mut tree, 10usize);
+    /// // insert betwern children 1 and 4
+    /// let child2 = child1.insert_after(&mut tree, 3usize);
+    /// // insert after child 3
+    /// child3.insert_after(&mut tree, 5usize);
+    ///
+    /// let descendants: Vec<_> = root_token.descendants_preord(&tree)
+    ///     .map(|x| x.data)
+    ///     .collect();
+    /// assert_eq!(&[2usize, 10, 3, 4, 5], &descendants[..]);
+    /// ```
+    pub fn insert_after<T>(self, tree: &mut Tree<T>, data: T) -> Token {
+        let new_node_token = tree.arena.head();
+        let (self_parent, self_next_sibling) = match tree.get(self) {
+            None => panic!("Invalid token"),
+            Some(node) => (node.parent, node.next_sibling)
+        };
+        tree[self].next_sibling = Some(new_node_token);  // already checked
+        let next_sibling = match self_next_sibling {
+            None => None,
+            Some(sibling) => match tree.get_mut(sibling) {
+                None => panic!("Corrupt tree"),
+                Some(ref mut node) => {
+                    node.previous_sibling = Some(new_node_token);
+                    Some(sibling)
+                }
+            },
+        };
+
+        let node = Node {
+            data,
+            token: new_node_token,
+            parent: self_parent,
+            previous_sibling: Some(self),
+            next_sibling,
+            first_child: None
+        };
+        tree.set(new_node_token, node);
+        new_node_token
     }
 
     /// Returns an iterator of tokens of ancestor nodes.

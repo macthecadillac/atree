@@ -157,7 +157,6 @@
 //! [`get_mut`]: struct.Tree.html#method.get_mut
 //! [`remove`]: struct.Tree.html#method.remove
 //! [`shrink_to_fit`]: struct.Tree.html#method.shrink_to_fit
-// TODO: add tree melding capabilities with a user provided function
 // TODO: use NonZeroUsize instead of usize in Token
 
 mod arena;
