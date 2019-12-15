@@ -378,6 +378,72 @@ impl<T> Node<T> {
         self.token.descendants_postord(tree)
     }
 
+    /// Returns an iterator of tokens of descendant nodes in level-order
+    /// (breadth-first traversal).
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// let first_child = root_token.append(&mut tree, 2usize);
+    /// let second_child = root_token.append(&mut tree, 3usize);
+    /// let third_child = root_token.append(&mut tree, 4usize);
+    /// let first_grandchild = second_child.append(&mut tree, 10usize);
+    /// let second_grandchild = second_child.append(&mut tree, 20usize);
+    /// let fourth_child = root_token.append(&mut tree, 5usize);
+    ///
+    /// let root = tree.root_node().unwrap();
+    /// let mut descendants = root.descendants_tokens_levelord(&tree);
+    /// assert_eq!(descendants.next(), Some(first_child));
+    /// assert_eq!(descendants.next(), Some(second_child));
+    /// assert_eq!(descendants.next(), Some(third_child));
+    /// assert_eq!(descendants.next(), Some(fourth_child));
+    /// assert_eq!(descendants.next(), Some(first_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_grandchild));
+    /// assert!(descendants.next().is_none());
+    /// ```
+    pub fn descendants_tokens_levelord<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantsTokensLevelord<'a, T> {
+        self.token.descendants_tokens_levelord(tree)
+    }
+
+    /// Returns an iterator of references of descendant nodes in level-order
+    /// (breadth-first traversal).
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// root_token.append(&mut tree, 2usize);
+    /// root_token.append(&mut tree, 3usize);
+    /// let third_child = root_token.append(&mut tree, 4usize);
+    /// root_token.append(&mut tree, 5usize);
+    /// third_child.append(&mut tree, 10usize);
+    /// third_child.append(&mut tree, 20usize);
+    ///
+    /// let root = tree.root_token().unwrap();
+    /// let mut descendants = root.descendants_levelord(&tree);
+    /// assert_eq!(descendants.next().unwrap().data, 2);
+    /// assert_eq!(descendants.next().unwrap().data, 3);
+    /// assert_eq!(descendants.next().unwrap().data, 4);
+    /// assert_eq!(descendants.next().unwrap().data, 5);
+    /// assert_eq!(descendants.next().unwrap().data, 10);
+    /// assert_eq!(descendants.next().unwrap().data, 20);
+    /// assert!(descendants.next().is_none());
+    /// ```
+    pub fn descendants_levelord<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantsLevelord<'a, T> {
+        self.token.descendants_levelord(tree)
+    }
+
     pub (crate) fn remove_descendants(&mut self, tree: &mut Tree<T>) {
         self.token.remove_descendants(tree)
     }
