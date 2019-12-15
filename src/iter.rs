@@ -11,6 +11,21 @@ use crate::token::Token;
 #[derive(Clone, Copy)]
 pub (crate) enum Branch { Sibling, Child }
 
+pub (crate) enum IterEmptyOr<I, T> where I: Iterator<Item=T> {
+    Iter(I),
+    Empty
+}
+
+impl<I, T> Iterator for IterEmptyOr<I, T> where I: Iterator<Item=T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        match self {
+            IterEmptyOr::Iter(iter) => iter.next(),
+            IterEmptyOr::Empty => None
+        }
+    }
+}
+
 fn preorder_next<T>(mut node_token: Token,
                     root: Token,
                     mut branch: Branch,
@@ -147,7 +162,7 @@ impl<'a, T> Iterator for DescendantsTokensLevelord<'a, T> {
 /// [`Node`]: ../struct.Node.html#method.descendants
 pub struct DescendantsPreord<'a, T> {
     pub (crate) tree: &'a Tree<T>,
-    pub (crate) descendants: DescendantsTokensPreord<'a, T>
+    pub (crate) iter: DescendantsTokensPreord<'a, T>
 }
 
 /// An iterator of references of descendants of a given node in post-order.
@@ -159,7 +174,7 @@ pub struct DescendantsPreord<'a, T> {
 /// [`Node`]: ../struct.Node.html#method.descendants
 pub struct DescendantsPostord<'a, T> {
     pub (crate) tree: &'a Tree<T>,
-    pub (crate) descendants: DescendantsTokensPostord<'a, T>
+    pub (crate) iter: DescendantsTokensPostord<'a, T>
 }
 
 /// An iterator of references of descendants of a given node in level-order
@@ -172,7 +187,7 @@ pub struct DescendantsPostord<'a, T> {
 /// [`Node`]: ../struct.Node.html#method.descendants
 pub struct DescendantsLevelord<'a, T> {
     pub (crate) tree: &'a Tree<T>,
-    pub (crate) descendants: DescendantsTokensLevelord<'a, T>
+    pub (crate) iter: DescendantsTokensLevelord<'a, T>
 }
 
 /// An iterator of mutable references of descendants of a given node in
@@ -184,7 +199,7 @@ pub struct DescendantsLevelord<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.descendants_mut
 pub struct DescendantsMutPreord<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
-    pub (crate) descendants: DescendantsTokensPreord<'a, T>,
+    pub (crate) iter: DescendantsTokensPreord<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
@@ -197,7 +212,7 @@ pub struct DescendantsMutPreord<'a, T: 'a> {
 /// [`Token`]: ../struct.Token.html#method.descendants_mut
 pub struct DescendantsMutPostord<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
-    pub (crate) descendants: DescendantsTokensPostord<'a, T>,
+    pub (crate) iter: DescendantsTokensPostord<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
@@ -210,7 +225,167 @@ pub struct DescendantsMutPostord<'a, T: 'a> {
 /// [`Token`]: ../struct.Token.html#method.descendants_mut
 pub struct DescendantsMutLevelord<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
-    pub (crate) descendants: DescendantsTokensLevelord<'a, T>,
+    pub (crate) iter: DescendantsTokensLevelord<'a, T>,
+    pub (crate) marker: PhantomData<&'a mut T>
+}
+
+/// An iterator of tokens of a given tree in pre-order.
+///
+/// This `struct` is created by the [`traverse_tokens_preord`] method on
+/// [`Tree<T>`].  See its documentation for more.
+///
+/// [`traverse_tokens_preord`]: ../struct.Tree.html#method.traverse_tokens_preord
+/// [`Tree`]: ../struct.Tree.html
+pub struct PreordTokensTraversal<'a, T> {
+    pub (crate) return_root: bool,
+    pub (crate) iter: IterEmptyOr<DescendantsTokensPreord<'a, T>, Token>
+}
+
+impl<'a, T> Iterator for PreordTokensTraversal<'a, T> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Token> {
+        if self.return_root {
+            self.return_root = false;
+            match &self.iter {
+                IterEmptyOr::Iter(iter) => iter.tree.root_token(),
+                IterEmptyOr::Empty => None
+            }
+        } else {
+            self.iter.next()
+        }
+    }
+}
+
+/// An iterator of tokens of a given tree in post-order.
+///
+/// This `struct` is created by the [`traverse_tokens_postord`] method on
+/// [`Tree<T>`].  See its documentation for more.
+///
+/// [`traverse_tokens_postord`]: ../struct.Tree.html#method.traverse_tokens_postord
+/// [`Tree`]: ../struct.Tree.html
+pub struct PostordTokensTraversal<'a, T> {
+    pub (crate) return_root: bool,
+    pub (crate) iter: IterEmptyOr<DescendantsTokensPostord<'a, T>, Token>
+}
+
+impl<'a, T> Iterator for PostordTokensTraversal<'a, T> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Token> {
+        match self.iter.next() {
+            Some(token) => Some(token),
+            None => match self.return_root {
+                false => None,
+                true => match &self.iter {
+                    IterEmptyOr::Empty => None,
+                    IterEmptyOr::Iter(iter) => {
+                        self.return_root = false;
+                        iter.tree.root_token()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// An iterator of tokens of a given tree in level-order (breadth-first).
+///
+/// This `struct` is created by the [`traverse_tokens_levelord`] method on
+/// [`Tree<T>`].  See its documentation for more.
+///
+/// [`traverse_tokens_levelord`]: ../struct.Tree.html#method.traverse_tokens_levelord
+/// [`Tree`]: ../struct.Tree.html
+pub struct LevelordTokensTraversal<'a, T> {
+    pub (crate) return_root: bool,
+    pub (crate) iter: IterEmptyOr<DescendantsTokensLevelord<'a, T>, Token>
+}
+
+impl<'a, T> Iterator for LevelordTokensTraversal<'a, T> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Token> {
+        if self.return_root {
+            self.return_root = false;
+            match &self.iter {
+                IterEmptyOr::Iter(iter) => iter.tree.root_token(),
+                IterEmptyOr::Empty => None
+            }
+        } else {
+            self.iter.next()
+        }
+    }
+}
+
+/// An iterator of references of nodes of a given tree in pre-order.
+///
+/// This `struct` is created by the [`traverse_preord`] methods on [`Tree<T>`].
+/// See its documentation for more.
+///
+/// [`Tree<T>`]: ../struct.Tree.html
+/// [`traverse_preord`]: ../struct.Tree.html#method.traverse_preord
+pub struct PreordTraversal<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) iter: PreordTokensTraversal<'a, T>
+}
+
+/// An iterator of references of nodes of a given tree in post-order.
+///
+/// This `struct` is created by the [`traverse_postord`] methods on [`Tree<T>`].
+/// See its documentation for more.
+///
+/// [`Tree<T>`]: ../struct.Tree.html
+/// [`traverse_postord`]: ../struct.Tree.html#method.traverse_postord
+pub struct PostordTraversal<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) iter: PostordTokensTraversal<'a, T>
+}
+
+/// An iterator of references of nodes of a given tree in level-order.
+///
+/// This `struct` is created by the [`traverse_levelord`] methods on [`Tree<T>`].
+/// See its documentation for more.
+///
+/// [`Tree<T>`]: ../struct.Tree.html
+/// [`traverse_levelord`]: ../struct.Tree.html#method.traverse_levelord
+pub struct LevelordTraversal<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) iter: LevelordTokensTraversal<'a, T>
+}
+
+/// An iterator of mutable references of nodes of a given tree in pre-order.
+///
+/// This `struct` is created by the [`traverse_preord_mut`] methods on
+/// [`Tree<T>`].  See its documentation for more.
+///
+/// [`Tree<T>`]: ../struct.Tree.html
+/// [`traverse_preord_mut`]: ../struct.Tree.html#method.traverse_preord_mut
+pub struct PreordTraversalMut<'a, T: 'a> {
+    pub (crate) tree: *mut Tree<T>,
+    pub (crate) iter: PreordTokensTraversal<'a, T>,
+    pub (crate) marker: PhantomData<&'a mut T>
+}
+
+/// An iterator of mutable references of nodes of a given tree in post-order.
+///
+/// This `struct` is created by the [`traverse_postord_mut`] methods on
+/// [`Tree<T>`].  See its documentation for more.
+///
+/// [`Tree<T>`]: ../struct.Tree.html
+/// [`traverse_postord_mut`]: ../struct.Tree.html#method.traverse_postord_mut
+pub struct PostordTraversalMut<'a, T: 'a> {
+    pub (crate) tree: *mut Tree<T>,
+    pub (crate) iter: PostordTokensTraversal<'a, T>,
+    pub (crate) marker: PhantomData<&'a mut T>
+}
+
+/// An iterator of mutable references of nodes of a given tree in level-order.
+///
+/// This `struct` is created by the [`traverse_levelord_mut`] methods on
+/// [`Tree<T>`].  See its documentation for more.
+///
+/// [`Tree<T>`]: ../struct.Tree.html
+/// [`traverse_levelord_mut`]: ../struct.Tree.html#method.traverse_levelord_mut
+pub struct LevelordTraversalMut<'a, T: 'a> {
+    pub (crate) tree: *mut Tree<T>,
+    pub (crate) iter: LevelordTokensTraversal<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
@@ -245,7 +420,7 @@ macro_rules! descendant_iter {
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = &'a Node<T>;
             fn next(&mut self) -> Option<&'a Node<T>> {
-                match self.descendants.next() {
+                match self.iter.next() {
                     Some(node_token) => self.tree.get(node_token),
                     None => None
                 }
@@ -257,7 +432,7 @@ macro_rules! descendant_iter {
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = &'a mut Node<T>;
             fn next(&mut self) -> Option<&'a mut Node<T>> {
-                match self.descendants.next() {
+                match self.iter.next() {
                     None => None,
                     Some(node_token) => {
                         let tree = unsafe { self.tree.as_mut().unwrap() };
@@ -277,9 +452,15 @@ descendant_iter!(@token struct DescendantsTokensPostord > postorder_next, subtre
 descendant_iter!(@node struct DescendantsPreord);
 descendant_iter!(@node struct DescendantsPostord);
 descendant_iter!(@node struct DescendantsLevelord);
+descendant_iter!(@node struct PreordTraversal);
+descendant_iter!(@node struct PostordTraversal);
+descendant_iter!(@node struct LevelordTraversal);
 descendant_iter!(@mut struct DescendantsMutPreord);
 descendant_iter!(@mut struct DescendantsMutPostord);
 descendant_iter!(@mut struct DescendantsMutLevelord);
+descendant_iter!(@mut struct PreordTraversalMut);
+descendant_iter!(@mut struct PostordTraversalMut);
+descendant_iter!(@mut struct LevelordTraversalMut);
 
 /// An iterator of tokens of siblings that follow a given node.
 ///

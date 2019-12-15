@@ -620,7 +620,7 @@ impl Token {
         -> DescendantsPreord<'a, T> {
         DescendantsPreord {
             tree,
-            descendants: self.descendants_tokens_preord(tree)
+            iter: self.descendants_tokens_preord(tree)
         }
     }
 
@@ -646,7 +646,7 @@ impl Token {
     /// third_child.append(&mut tree, 10usize);
     /// third_child.append(&mut tree, 20usize);
     ///
-    /// for x in root_token.descendants_mut_preord(&mut tree) {
+    /// for x in root_token.descendants_preord_mut(&mut tree) {
     ///     x.data += 100;
     /// }
     ///
@@ -659,11 +659,11 @@ impl Token {
     /// assert_eq!(descendants.next().unwrap().data, 105);
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants_mut_preord<'a, T>(self, tree: &'a mut Tree<T>)
+    pub fn descendants_preord_mut<'a, T>(self, tree: &'a mut Tree<T>)
         -> DescendantsMutPreord<'a, T> {
         DescendantsMutPreord {
             tree: tree as *mut Tree<T>,
-            descendants: self.descendants_tokens_preord(tree),
+            iter: self.descendants_tokens_preord(tree),
             marker: PhantomData::default()
         }
     }
@@ -754,7 +754,7 @@ impl Token {
         -> DescendantsPostord<'a, T> {
         DescendantsPostord {
             tree,
-            descendants: self.descendants_tokens_postord(tree)
+            iter: self.descendants_tokens_postord(tree)
         }
     }
 
@@ -780,7 +780,7 @@ impl Token {
     /// third_child.append(&mut tree, 10usize);
     /// third_child.append(&mut tree, 20usize);
     ///
-    /// for x in root_token.descendants_mut_postord(&mut tree) {
+    /// for x in root_token.descendants_postord_mut(&mut tree) {
     ///     x.data += 100;
     /// }
     ///
@@ -793,11 +793,11 @@ impl Token {
     /// assert_eq!(descendants.next().unwrap().data, 105);
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants_mut_postord<'a, T>(self, tree: &'a mut Tree<T>)
+    pub fn descendants_postord_mut<'a, T>(self, tree: &'a mut Tree<T>)
         -> DescendantsMutPostord<'a, T> {
         DescendantsMutPostord {
             tree: tree as *mut Tree<T>,
-            descendants: self.descendants_tokens_postord(tree),
+            iter: self.descendants_tokens_postord(tree),
             marker: PhantomData::default()
         }
     }
@@ -816,20 +816,20 @@ impl Token {
     /// let root_data = 1usize;
     /// let (mut tree, root_token) = Tree::with_root(root_data);
     ///
-    /// let first_child = root_token.append(&mut tree, 2usize);  // 1
-    /// let second_child = root_token.append(&mut tree, 3usize);  // 2
-    /// let third_child = root_token.append(&mut tree, 4usize);  // 3
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);  // 4
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);  // 5
-    /// let fourth_child = root_token.append(&mut tree, 5usize);  // 6
+    /// let first_child = root_token.append(&mut tree, 2usize);
+    /// let second_child = root_token.append(&mut tree, 3usize);
+    /// let third_child = root_token.append(&mut tree, 4usize);
+    /// let first_grandchild = second_child.append(&mut tree, 10usize);
+    /// let second_grandchild = second_child.append(&mut tree, 20usize);
+    /// let fourth_child = root_token.append(&mut tree, 5usize);
     ///
     /// let mut descendants = root_token.descendants_tokens_levelord(&tree);
-    /// assert_eq!(descendants.next(), Some(first_child));  // 1
-    /// assert_eq!(descendants.next(), Some(second_child));  // 2
-    /// assert_eq!(descendants.next(), Some(third_child));  // 3
-    /// assert_eq!(descendants.next(), Some(fourth_child));  //4
-    /// assert_eq!(descendants.next(), Some(first_grandchild));  // 5
-    /// assert_eq!(descendants.next(), Some(second_grandchild));  // 6
+    /// assert_eq!(descendants.next(), Some(first_child));
+    /// assert_eq!(descendants.next(), Some(second_child));
+    /// assert_eq!(descendants.next(), Some(third_child));
+    /// assert_eq!(descendants.next(), Some(fourth_child));
+    /// assert_eq!(descendants.next(), Some(first_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_grandchild));
     /// assert!(descendants.next().is_none());
     /// ```
     pub fn descendants_tokens_levelord<'a, T>(self, tree: &'a Tree<T>)
@@ -875,7 +875,7 @@ impl Token {
         -> DescendantsLevelord<'a, T> {
         DescendantsLevelord {
             tree,
-            descendants: self.descendants_tokens_levelord(tree)
+            iter: self.descendants_tokens_levelord(tree)
         }
     }
 
@@ -901,7 +901,7 @@ impl Token {
     /// third_child.append(&mut tree, 10usize);
     /// third_child.append(&mut tree, 20usize);
     ///
-    /// for x in root_token.descendants_mut_levelord(&mut tree) {
+    /// for x in root_token.descendants_levelord_mut(&mut tree) {
     ///     x.data += 100;
     /// }
     ///
@@ -914,11 +914,11 @@ impl Token {
     /// assert_eq!(descendants.next().unwrap().data, 120);
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants_mut_levelord<'a, T>(self, tree: &'a mut Tree<T>)
+    pub fn descendants_levelord_mut<'a, T>(self, tree: &'a mut Tree<T>)
         -> DescendantsMutLevelord<'a, T> {
         DescendantsMutLevelord {
             tree: tree as *mut Tree<T>,
-            descendants: self.descendants_tokens_levelord(tree),
+            iter: self.descendants_tokens_levelord(tree),
             marker: PhantomData::default()
         }
     }
