@@ -238,7 +238,7 @@ impl<T> Node<T> {
         self.token.children(tree)
     }
 
-	/// Returns an iterator of tokens of descendant nodes (in pre-order).
+    /// Returns an iterator of tokens of descendant nodes in pre-order.
     ///
     /// # Examples:
     ///
@@ -256,7 +256,7 @@ impl<T> Node<T> {
     /// let fourth_child = root_token.append(&mut tree, 5usize);
     ///
     /// let root = &tree[root_token];
-    /// let mut descendants = root.descendants_tokens(&tree);
+    /// let mut descendants = root.descendants_tokens_preord(&tree);
     /// assert_eq!(descendants.next(), Some(first_child));
     /// assert_eq!(descendants.next(), Some(second_child));
     /// assert_eq!(descendants.next(), Some(first_grandchild));
@@ -266,17 +266,17 @@ impl<T> Node<T> {
     /// assert!(descendants.next().is_none());
     ///
     /// let second_child_node = &tree[second_child];
-    /// let mut descendants = second_child_node.descendants_tokens(&tree);
+    /// let mut descendants = second_child_node.descendants_tokens_preord(&tree);
     /// assert_eq!(descendants.next(), Some(first_grandchild));
     /// assert_eq!(descendants.next(), Some(second_grandchild));
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants_tokens<'a>(&self, tree: &'a Tree<T>)
-        -> DescendantTokens<'a, T> {
-        self.token.descendants_tokens(tree)
+    pub fn descendants_tokens_preord<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantsTokensPreord<'a, T> {
+        self.token.descendants_tokens_preord(tree)
     }
 
-    /// Returns an iterator of references of descendant nodes (in pre-order).
+    /// Returns an iterator of references of descendant nodes in pre-order.
     ///
     /// # Examples:
     ///
@@ -294,7 +294,7 @@ impl<T> Node<T> {
     /// third_child.append(&mut tree, 20usize);
     ///
     /// let root = tree.root_node().unwrap();
-    /// let mut descendants = root.descendants(&tree);
+    /// let mut descendants = root.descendants_preord(&tree);
     /// assert_eq!(descendants.next().unwrap().data, 2);
     /// assert_eq!(descendants.next().unwrap().data, 3);
     /// assert_eq!(descendants.next().unwrap().data, 4);
@@ -303,8 +303,79 @@ impl<T> Node<T> {
     /// assert_eq!(descendants.next().unwrap().data, 5);
     /// assert!(descendants.next().is_none());
     /// ```
-    pub fn descendants<'a>(&self, tree: &'a Tree<T>) -> Descendants<'a, T> {
-        self.token.descendants(tree)
+    pub fn descendants_preord<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantsPreord<'a, T> {
+        self.token.descendants_preord(tree)
+    }
+
+    /// Returns an iterator of tokens of descendant nodes in post-order.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// let first_child = root_token.append(&mut tree, 2usize);
+    /// let second_child = root_token.append(&mut tree, 3usize);
+    /// let third_child = root_token.append(&mut tree, 4usize);
+    /// let first_grandchild = second_child.append(&mut tree, 10usize);
+    /// let second_grandchild = second_child.append(&mut tree, 20usize);
+    /// let fourth_child = root_token.append(&mut tree, 5usize);
+    ///
+    /// let root = &tree[root_token];
+    /// let mut descendants = root.descendants_tokens_postord(&tree);
+    /// assert_eq!(descendants.next(), Some(first_child));
+    /// assert_eq!(descendants.next(), Some(first_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_child));
+    /// assert_eq!(descendants.next(), Some(third_child));
+    /// assert_eq!(descendants.next(), Some(fourth_child));
+    /// assert!(descendants.next().is_none());
+    ///
+    /// let second_child_node = &tree[second_child];
+    /// let mut descendants = second_child_node.descendants_tokens_postord(&tree);
+    /// assert_eq!(descendants.next(), Some(first_grandchild));
+    /// assert_eq!(descendants.next(), Some(second_grandchild));
+    /// assert!(descendants.next().is_none());
+    /// ```
+    pub fn descendants_tokens_postord<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantsTokensPostord<'a, T> {
+        self.token.descendants_tokens_postord(tree)
+    }
+
+    /// Returns an iterator of references of descendant nodes in post-order.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Tree;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    ///
+    /// root_token.append(&mut tree, 2usize);
+    /// root_token.append(&mut tree, 3usize);
+    /// let third_child = root_token.append(&mut tree, 4usize);
+    /// root_token.append(&mut tree, 5usize);
+    /// third_child.append(&mut tree, 10usize);
+    /// third_child.append(&mut tree, 20usize);
+    ///
+    /// let root = tree.root_node().unwrap();
+    /// let mut descendants = root.descendants_postord(&tree);
+    /// assert_eq!(descendants.next().unwrap().data, 2);
+    /// assert_eq!(descendants.next().unwrap().data, 3);
+    /// assert_eq!(descendants.next().unwrap().data, 10);
+    /// assert_eq!(descendants.next().unwrap().data, 20);
+    /// assert_eq!(descendants.next().unwrap().data, 4);
+    /// assert_eq!(descendants.next().unwrap().data, 5);
+    /// assert!(descendants.next().is_none());
+    /// ```
+    pub fn descendants_postord<'a>(&self, tree: &'a Tree<T>)
+        -> DescendantsPostord<'a, T> {
+        self.token.descendants_postord(tree)
     }
 
     pub (crate) fn remove_descendants(&mut self, tree: &mut Tree<T>) {

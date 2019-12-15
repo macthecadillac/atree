@@ -243,7 +243,7 @@ impl<T> Tree<T> {
     /// let nnext_node2 = next_node.append(&mut tree, 4usize);
     /// 
     /// tree.remove(next_node);
-    /// let mut descendants = root_token.descendants(&tree);
+    /// let mut descendants = root_token.descendants_preord(&tree);
     /// assert!(descendants.next().is_none());
     /// assert_eq!(tree.node_count(), 1);  // only the root node is left
     /// ```
@@ -312,9 +312,9 @@ impl<T> Tree<T> {
     /// let btree = tree.split_at(node2);
     /// let btree_root = btree.root_token().unwrap();
     ///
-    /// let atree_elt: Vec<_> = root_token.descendants(&tree)
+    /// let atree_elt: Vec<_> = root_token.descendants_preord(&tree)
     ///     .map(|x| x.data).collect();
-    /// let btree_elt: Vec<_> = btree_root.descendants(&btree)
+    /// let btree_elt: Vec<_> = btree_root.descendants_preord(&btree)
     ///     .map(|x| x.data).collect();
     ///
     /// // root isn't included in iterator

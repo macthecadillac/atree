@@ -1,3 +1,4 @@
+#![allow(clippy::match_bool)]
 //! A module that contains different kinds of iterators defined on the tree.
 use std::marker::PhantomData;
 
@@ -5,116 +6,217 @@ use crate::Tree;
 use crate::node::Node;
 use crate::token::Token;
 
+#[derive(Clone, Copy)]
 pub (crate) enum Branch { Sibling, Child }
 
-/// An iterator of tokens of descendants of a given node.
+fn preorder_next<T>(mut node_token: Token,
+                    root: Token,
+                    mut branch: Branch,
+                    tree: &Tree<T>)
+    -> (Option<Token>, Branch) {
+    loop {
+        let node = &tree[node_token];
+        match branch {
+            Branch::Child => match node.first_child {
+                Some(token) => break (Some(token), Branch::Child),
+                None => branch = Branch::Sibling
+            },
+            Branch::Sibling => match node.next_sibling {
+                Some(token) => break (Some(token), Branch::Child),
+                None => match node.parent {
+                    None => break (None, Branch::Child),
+                    Some(parent) => match parent == root {
+                        true => break (None, Branch::Child),
+                        false => {
+                            node_token = parent;
+                            branch = Branch::Sibling;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub (crate) fn postorder_next<T>(mut node_token: Token,
+                                 root: Token,
+                                 mut branch: Branch,
+                                 tree: &Tree<T>)
+    -> (Option<Token>, Branch) {
+    let mut switch_branch = true;
+    loop {
+        let node = &tree[node_token];
+        match branch {
+            Branch::Child => match node.first_child {
+                Some(token) => {
+                    node_token = token;
+                    switch_branch = false;
+                },
+                None => match switch_branch {
+                    true => branch = Branch::Sibling,
+                    false => break (Some(node_token), Branch::Sibling)
+                }
+            },
+            Branch::Sibling => match node.next_sibling {
+                Some(token) => {
+                    switch_branch = false;
+                    node_token = token;
+                    branch = Branch::Child;
+                },
+                None => match node.parent {
+                    None => break (None, Branch::Child),
+                    Some(parent) => match parent == root {
+                        true => break (None, Branch::Child),
+                        false => break (Some(parent), Branch::Sibling)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// An iterator of tokens of descendants of a given node in pre-order.
 ///
 /// This `struct` is created by the `descendants_tokens` methods on [`Token`]
 /// and [`Node`]. See their documentation for more.
 ///
 /// [`Token`]: ../struct.Token.html#method.descendants_tokens
 /// [`Node`]: ../struct.Node.html#method.descendants_tokens
-pub struct DescendantTokens<'a, T> {
+pub struct DescendantsTokensPreord<'a, T> {
     pub (crate) tree: &'a Tree<T>,
     pub (crate) subtree_root: Token,
     pub (crate) node_token: Option<Token>,
+    pub (crate) branch: Branch
 }
 
-impl<'a, T> Iterator for DescendantTokens<'a, T> {
-    type Item = Token;
-    fn next(&mut self) -> Option<Token> {
-        // preorder traversal
-        let aux = |mut node_token, root, mut branch, tree: &Tree<T>|
-            loop {
-                let node = &tree[node_token];
-                match branch {
-                    Branch::Child => match node.first_child {
-                        Some(token) => break Some(token),
-                        None => branch = Branch::Sibling
-                    }
-                    Branch::Sibling => {
-                        match node.next_sibling {
-                            Some(token) => break Some(token),
-                            None => match node.parent {
-                                None => break None,
-                                Some(parent) => if parent == root {
-                                    break None
-                                } else {
-                                    node_token = parent;
-                                    branch = Branch::Sibling;
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-        match self.node_token{
-            Some(token) => {
-                match self.tree.get(token) {
-                    Some(_) => {
-                        self.node_token = aux(token, self.subtree_root,
-                                              Branch::Child, self.tree);
-                        Some(token)
-                    },
-                    None => panic!("Stale token: {:?} is not found in \
-                                    the tree. Check code", token)
-                }
-            },
-            None => None
-        }
-    }
+/// An iterator of tokens of descendants of a given node in post-order.
+///
+/// This `struct` is created by the `descendants_tokens` methods on [`Token`]
+/// and [`Node`]. See their documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendants_tokens
+/// [`Node`]: ../struct.Node.html#method.descendants_tokens
+pub struct DescendantsTokensPostord<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) subtree_root: Token,
+    pub (crate) node_token: Option<Token>,
+    pub (crate) branch: Branch
 }
 
-/// An iterator of references of descendants of a given node.
+/// An iterator of references of descendants of a given node in pre-order.
 ///
 /// This `struct` is created by the `descendants` methods on [`Token`]
 /// and [`Node`]. See their documentation for more.
 ///
 /// [`Token`]: ../struct.Token.html#method.descendants
 /// [`Node`]: ../struct.Node.html#method.descendants
-pub struct Descendants<'a, T> {
+pub struct DescendantsPreord<'a, T> {
     pub (crate) tree: &'a Tree<T>,
-    pub (crate) descendants: DescendantTokens<'a, T>
+    pub (crate) descendants: DescendantsTokensPreord<'a, T>
 }
 
-impl<'a, T> Iterator for Descendants<'a, T> {
-    type Item = &'a Node<T>;
-    fn next(&mut self) -> Option<&'a Node<T>> {
-        match self.descendants.next() {
-            Some(node_token) => self.tree.get(node_token),
-            None => None
-        }
-    }
+/// An iterator of references of descendants of a given node in post-order.
+///
+/// This `struct` is created by the `descendants` methods on [`Token`]
+/// and [`Node`]. See their documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendants
+/// [`Node`]: ../struct.Node.html#method.descendants
+pub struct DescendantsPostord<'a, T> {
+    pub (crate) tree: &'a Tree<T>,
+    pub (crate) descendants: DescendantsTokensPostord<'a, T>
 }
 
-/// An iterator of mutable references of descendants of a given node.
+/// An iterator of mutable references of descendants of a given node in
+/// pre-order.
 ///
 /// This `struct` is created by the `descendants_mut` method on [`Token`]. See
 /// its documentation for more.
 ///
 /// [`Token`]: ../struct.Token.html#method.descendants_mut
-pub struct DescendantsMut<'a, T: 'a> {
+pub struct DescendantsMutPreord<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
-    pub (crate) descendants: DescendantTokens<'a, T>,
+    pub (crate) descendants: DescendantsTokensPreord<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
 
-impl<'a, T> Iterator for DescendantsMut<'a, T> {
-    type Item = &'a mut Node<T>;
-    fn next(&mut self) -> Option<&'a mut Node<T>> {
-        match self.descendants.next() {
-            Some(node_token) => {
-                let tree = unsafe { self.tree.as_mut().unwrap() };
-                match tree.get_mut(node_token) {
-                    Some(node) => Some(node),
+/// An iterator of mutable references of descendants of a given node in
+/// post-order.
+///
+/// This `struct` is created by the `descendants_mut` method on [`Token`]. See
+/// its documentation for more.
+///
+/// [`Token`]: ../struct.Token.html#method.descendants_mut
+pub struct DescendantsMutPostord<'a, T: 'a> {
+    pub (crate) tree: *mut Tree<T>,
+    pub (crate) descendants: DescendantsTokensPostord<'a, T>,
+    pub (crate) marker: PhantomData<&'a mut T>
+}
+
+macro_rules! descendant_iter {
+    (@token struct $name:ident > $func:ident, $field:ident) => {
+        impl <'a, T> Iterator for $name<'a, T> {
+            type Item = Token;
+            fn next(&mut self) -> Option<Token> {
+                match self.node_token {
+                    None => None,
+                    Some(token) => match self.tree.get(token) {
+                        None => panic!("Stale token: {:?} is not found in \
+                                        the tree. Check code", token),
+                        Some(_) => {
+                            let (next_node, branch) = $func(
+                                token,
+                                self.$field,
+                                self.branch,
+                                self.tree
+                            );
+                            self.node_token = next_node;
+                            self.branch = branch;
+                            Some(token)
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    (@node struct $name:ident) => {
+        impl<'a, T> Iterator for $name<'a, T> {
+            type Item = &'a Node<T>;
+            fn next(&mut self) -> Option<&'a Node<T>> {
+                match self.descendants.next() {
+                    Some(node_token) => self.tree.get(node_token),
                     None => None
                 }
-            },
-            None => None
+            }
+        }
+    };
+
+    (@mut struct $name:ident) => {
+        impl<'a, T> Iterator for $name<'a, T> {
+            type Item = &'a mut Node<T>;
+            fn next(&mut self) -> Option<&'a mut Node<T>> {
+                match self.descendants.next() {
+                    None => None,
+                    Some(node_token) => {
+                        let tree = unsafe { self.tree.as_mut().unwrap() };
+                        match tree.get_mut(node_token) {
+                            Some(node) => Some(node),
+                            None => None
+                        }
+                    }
+                }
+            }
         }
     }
 }
+
+descendant_iter!(@token struct DescendantsTokensPreord > preorder_next, subtree_root);
+descendant_iter!(@token struct DescendantsTokensPostord > postorder_next, subtree_root);
+descendant_iter!(@node struct DescendantsPreord);
+descendant_iter!(@node struct DescendantsPostord);
+descendant_iter!(@mut struct DescendantsMutPreord);
+descendant_iter!(@mut struct DescendantsMutPostord);
 
 /// An iterator of tokens of siblings that follow a given node.
 ///
@@ -262,17 +364,15 @@ macro_rules! iterator {
             type Item = Token;
             fn next(&mut self) -> Option<Token> {
                 match self.node_token {
-                    Some(curr_node_token) => {
-                        match self.tree.get(curr_node_token) {
-                            Some(curr_node) => {
-                                self.node_token = curr_node.$field;
-                                Some(curr_node_token)
-                            },
-                            None => panic!("Stale token: {:?} is not found in \
-                                            the tree. Check code", curr_node_token)
+                    None => None,
+                    Some(token) => match self.tree.get(token) {
+                        None => panic!("Stale token: {:?} is not found in \
+                                        the tree. Check code", token),
+                        Some(curr_node) => {
+                            self.node_token = curr_node.$field;
+                            Some(token)
                         }
-                    },
-                    None => None
+                    }
                 }
             }
         }
@@ -298,17 +398,17 @@ macro_rules! iterator {
             type Item = &'a mut Node<T>;
             fn next(&mut self) -> Option<&'a mut Node<T>> {
                 match self.node_token {
+                    None => None,
                     Some(curr_node_token) => {
                         let tree = unsafe { self.tree.as_mut().unwrap() };
                         match tree.get_mut(curr_node_token) {
+                            None => None,
                             Some(curr_node) => {
                                 self.node_token = curr_node.$field;
                                 Some(curr_node)
-                            },
-                            None => None
+                            }
                         }
-                    },
-                    None => None
+                    }
                 }
             }
         }
