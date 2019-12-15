@@ -1,4 +1,5 @@
-use std::collections::VecDeque;
+#![allow(clippy::match_bool)]
+use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
 
 use crate::arena::Arena;
@@ -7,7 +8,7 @@ use crate::node::Node;
 use crate::tree::Tree;
 
 /// A `Token` is a handle to a node on the tree.
-#[derive(Clone, Copy, Eq, PartialEq, Default, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Default, Debug, Hash)]
 pub struct Token{
     pub (crate) index: usize
 }
@@ -34,7 +35,6 @@ impl Token {
     /// assert_eq!(descendants.next().unwrap().data, 2usize);
     /// assert_eq!(descendants.next().unwrap().data, 3usize);
     /// ```
-    // TODO: find ways to put this under impl Node<T>
     pub fn append<T>(self, tree: &mut Tree<T>, data: T) -> Token {
         fn find_head<T>(arena: &mut Arena<T>) -> Token {
             match arena.head() {
@@ -106,13 +106,47 @@ impl Token {
     pub fn append_subtree<T>(self, self_tree: &mut Tree<T>,
                              other_token: Token, other_tree: &Tree<T>)
         where T: Clone {
-        let data = match other_tree.get(other_token) {
-            Some(node) => node.data.clone(),
-            None => panic!("Invalid token")
-        };
-        let new_node_token = self.append(self_tree, data);
-        for child_token in other_token.children_tokens(&other_tree) {
-            new_node_token.append_subtree(self_tree, child_token, other_tree)
+        match other_tree.get(other_token) {
+            None => panic!("Invalid token"),
+            Some(node) => {
+                let new_subtree_root = self.append(self_tree, node.data.clone());
+                let mut index_map: HashMap<Token, Token> = HashMap::new();
+                index_map.insert(other_token, new_subtree_root);
+
+                let mut tmp = vec![other_token];
+                let mut branch = Branch::Child;
+
+                loop {
+                    let &token = tmp.last().unwrap(); // never fails
+                    let node = &other_tree[token];
+                    match branch {
+                        Branch::Child => match node.first_child {
+                            None => branch = Branch::Sibling,
+                            Some(child) => {
+                                let child_data = match other_tree.get(child) {
+                                    Some(node) => node.data.clone(),
+                                    None => panic!("Corrupt tree")
+                                };
+                                let new_parent = index_map[&token];
+                                let new_child_token =
+                                    new_parent.append(self_tree, child_data);
+                                index_map.insert(child, new_child_token);
+                                tmp.push(child);
+                            }
+                        },
+                        Branch::Sibling => match Some(other_token) == tmp.pop() {
+                            true => break,
+                            false => match node.next_sibling {
+                                None => (),
+                                Some(sibling) => {
+                                    tmp.push(sibling);
+                                    branch = Branch::Child;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
