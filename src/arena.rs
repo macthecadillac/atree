@@ -4,17 +4,27 @@ use std::mem;
 
 use crate::token::Token;
 
-#[derive(Default, Clone)]
+#[derive(Clone, Debug)]
 pub struct Arena<T> {
     data: Vec<Cell<T>>,
     head: Option<usize>,
     len: usize
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Cell<T> {
     Just(T),
     Nothing(Option<usize>)
+}
+
+impl<T> Default for Arena<T> {
+    fn default() -> Self {
+        Arena {
+            data: vec![Cell::Nothing(None)],
+            head: Some(0),
+            len: 0
+        }
+    }
 }
 
 impl<T> Arena<T> {
