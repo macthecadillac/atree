@@ -1,6 +1,6 @@
 [package]
 name = "atree"
-version = "0.9.1"
+version = "0.3.0"
 authors = ["Mac Lee <macthecadillac@gmail.com>"]
 edition = "2018"
 
