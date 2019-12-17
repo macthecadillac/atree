@@ -1,8 +1,9 @@
-use std::marker::PhantomData;
+#![allow(clippy::match_bool)]
+use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
 use crate::arena::Arena;
-use crate::iter::*;
+use crate::iter::Branch;
 use crate::node::Node;
 use crate::token::Token;
 
@@ -24,12 +25,12 @@ impl<T> Tree<T> {
     /// assert!(tree.is_empty());
     ///
     /// let root_data = 1usize;
-    /// tree.initialize(root_data);
+    /// tree.new_node(root_data);
     /// assert!(!tree.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool { self.arena.is_empty() }
 
-    /// Counts the number of nodes.
+    /// Counts the number of nodes currently in the arena.
     ///
     /// # Examples:
     ///
@@ -37,7 +38,7 @@ impl<T> Tree<T> {
     /// use atree::Tree;
     ///
     /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut tree, root_token) = Tree::with_data(root_data);
     /// assert_eq!(tree.node_count(), 1);
     ///
     /// let next_node_token = root_token.append(&mut tree, 2usize);
@@ -52,26 +53,8 @@ impl<T> Tree<T> {
     pub fn capacity(&self) -> usize { self.arena.capacity() }
 
 
-    /// Returns the token of the root node
-    ///
-    /// # Examples:
-    ///
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let mut tree = Tree::default();
-    /// assert_eq!(tree.root_token(), None);
-    ///
-    /// let root_data = 1usize;
-    /// let root_token = tree.initialize(root_data);
-    /// assert_eq!(tree.root_token(), Some(root_token));
-    /// ```
-    pub fn root_token(&self) -> Option<Token> {
-        if self.is_empty() { None }
-        else { Some(Token { index: 0 }) }
-    }
-
-    /// Returns a reference to the root node.
+    /// Initializes arena and initializes a new tree with the given data at the
+    /// root node.
     ///
     /// # Examples:
     ///
@@ -79,42 +62,10 @@ impl<T> Tree<T> {
     /// use atree::Tree;
     ///
     /// let root_data = 1usize;
-    /// let (mut tree, _) = Tree::with_root(root_data);
-    /// assert_eq!(tree.root_node().unwrap().data, 1);
-    /// ```
-    pub fn root_node(&self) -> Option<&Node<T>> { self.get(Token { index: 0 }) }
-
-    /// Returns a mutable reference to the root node.
-    ///
-    /// # Examples:
-    ///
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, _) = Tree::with_root(root_data);
-    ///
-    /// let root_node = tree.root_node_mut().unwrap();
-    /// root_node.data = 3;
-    ///
-    /// assert_eq!(tree.root_node().unwrap().data, 3);
-    /// ```
-    pub fn root_node_mut(&mut self) -> Option<&mut Node<T>> {
-        self.get_mut(Token { index: 0 })
-    }
-
-    /// Creates tree with data at the root node.
-    ///
-    /// # Examples:
-    ///
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut tree, root_token) = Tree::with_data(root_data);
     /// assert_eq!(tree[root_token].data, 1);
     /// ```
-    pub fn with_root(data: T) -> (Self, Token) {
+    pub fn with_data(data: T) -> (Self, Token) {
         let root_node = Node {
             data,
             parent: None,
@@ -128,8 +79,7 @@ impl<T> Tree<T> {
         (Tree { arena }, root_token)
     }
 
-    /// Creates root node on tree with data. Will erase all data if tree wasn't
-    /// emtpy to begin with.
+    /// Initializes a new tree in existing arena and returns the root token.
     ///
     /// # Examples:
     ///
@@ -140,13 +90,21 @@ impl<T> Tree<T> {
     /// assert!(tree.is_empty());
     ///
     /// let root_data = 1usize;
-    /// tree.initialize(root_data);
+    /// tree.new_node(root_data);
     /// assert!(!tree.is_empty());
     /// ```
-    pub fn initialize(&mut self, data: T) -> Token {
-        let (tree, root_token) = Tree::with_root(data);
-        *self = tree;
-        root_token
+    pub fn new_node(&mut self, data: T) -> Token {
+        let token = self.arena.head();
+        let node = Node {
+            data,
+            parent: None,
+            previous_sibling: None,
+            token,
+            next_sibling: None,
+            first_child: None
+        };
+        self.arena.set(token, node);
+        token
     }
 
     /// Gets a reference to a node on the tree.
@@ -157,7 +115,7 @@ impl<T> Tree<T> {
     /// use atree::Tree;
     ///
     /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut tree, root_token) = Tree::with_data(root_data);
     /// let next_node_token = root_token.append(&mut tree, 2usize);
     ///
     /// // get the node we just inserted
@@ -176,7 +134,7 @@ impl<T> Tree<T> {
     /// use atree::Tree;
     ///
     /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut tree, root_token) = Tree::with_data(root_data);
     /// let next_node_token = root_token.append(&mut tree, 2usize);
     ///
     /// // get the node we just inserted
@@ -207,7 +165,7 @@ impl<T> Tree<T> {
     /// use atree::Tree;
     ///
     /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
     /// let next_node = root_token.append(&mut tree, 2usize);
     /// let nnext_node1 = next_node.append(&mut tree, 3usize);
@@ -236,16 +194,17 @@ impl<T> Tree<T> {
     ///
     /// ```
     /// use atree::Tree;
+    /// use atree::iter::TraversalOrder;
     ///
     /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
     /// let next_node = root_token.append(&mut tree, 2usize);
     /// let nnext_node1 = next_node.append(&mut tree, 3usize);
     /// let nnext_node2 = next_node.append(&mut tree, 4usize);
     /// 
     /// tree.remove(next_node);
-    /// let mut iter = tree.traverse_tokens_preord();
+    /// let mut iter = root_token.subtree_tokens(&tree, TraversalOrder::Pre);
     /// assert_eq!(iter.next(), Some(root_token));
     /// assert!(iter.next().is_none());
     /// assert_eq!(tree.node_count(), 1);  // only the root node is left
@@ -285,8 +244,12 @@ impl<T> Tree<T> {
             }
         }
     }
+}
 
-    /// Detaches subtree starting from the given node into its own tree.
+impl<T> Tree<T> where T: Clone {
+    /// **Example is not ideal**
+    /// Detaches subtree starting from the given node into its tree in its own
+    /// arena.
     ///
     /// # Panics:
     ///
@@ -295,9 +258,10 @@ impl<T> Tree<T> {
     /// # Examples:
     /// ```
     /// use atree::Tree;
+    /// use atree::iter::TraversalOrder;
     ///
     /// let root_data = "a0";
-    /// let (mut atree, root_token) = Tree::with_root(root_data);
+    /// let (mut atree, root_token) = Tree::with_data(root_data);
     ///
     /// let node1 = root_token.append(&mut atree, "a1");
     /// let node2 = root_token.append(&mut atree, "b1");
@@ -306,348 +270,105 @@ impl<T> Tree<T> {
     ///
     /// // split tree
     /// let btree = atree.split_at(node2);
-    /// let btree_root = btree.root_token().unwrap();
     ///
-    /// let atree_elt: Vec<_> = atree.traverse_preord().map(|x| x.data).collect();
-    /// let btree_elt: Vec<_> = btree.traverse_preord().map(|x| x.data).collect();
+    /// let atree_elt: Vec<_> = root_token.subtree(&atree, TraversalOrder::Pre)
+    ///     .map(|x| x.data).collect();
+    /// let btree_elt: Vec<_> = root_token.subtree(&btree, TraversalOrder::Pre)
+    ///     .map(|x| x.data).collect();
     ///
     /// assert_eq!(&["a0", "a1", "a2"], &atree_elt[..]);
     /// assert_eq!(&["b1", "b2"], &btree_elt[..]);
     /// ```
+    // TODO: could probably be optimized
     pub fn split_at(&mut self, token: Token) -> Tree<T> where T: Clone {
         let root_data = match self.get(token) {
             Some(node) => node.data.clone(),
             None => panic!("Invalid token")
         };
-        let (mut tree, root) = Tree::with_root(root_data);
+        let (mut tree, root) = Tree::with_data(root_data);
         for child_token in token.children_tokens(&self) {
-            root.append_subtree(&mut tree, child_token, self);
+            tree.append_subtree(root, self, child_token);
         }
         self.remove(token);
         tree
     }
 
-    /// Returns an iterator of tokens in pre-order.
+    /// Appends a sub-tree from one arena to a given node of another. It does so
+    /// by walking the tree and copying node by node to the target tree.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node on the tree.
     ///
     /// # Examples:
     /// ```
     /// use atree::Tree;
+    /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
+    /// let root_data = "John";
+    /// let (mut tree1, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child = root_token.append(&mut tree, 2usize);
-    /// let second_child = root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);
-    /// let fourth_child = root_token.append(&mut tree, 5usize);
+    /// let node1 = root_token.append(&mut tree1, "Juan");
+    /// let node2 = root_token.append(&mut tree1, "Giovanni");
+    /// let grandchild1 = node1.append(&mut tree1, "Ivan");
+    /// let grandchild2 = node2.append(&mut tree1, "Johann");
     ///
-    /// let mut iter = tree.traverse_tokens_preord();
-    /// assert_eq!(iter.next(), Some(root_token));
-    /// assert_eq!(iter.next(), Some(first_child));
-    /// assert_eq!(iter.next(), Some(second_child));
-    /// assert_eq!(iter.next(), Some(first_grandchild));
-    /// assert_eq!(iter.next(), Some(second_grandchild));
-    /// assert_eq!(iter.next(), Some(third_child));
-    /// assert_eq!(iter.next(), Some(fourth_child));
-    /// assert!(iter.next().is_none());
+    /// let mut tree2 = tree1.clone();
+    ///
+    /// // append "node1" from tree2 under "node2" in tree1
+    /// tree1.append_subtree(node2, &tree2, node1);
+    /// let mut subtree = node2.subtree(&tree1, TraversalOrder::Pre);
+    ///
+    /// assert_eq!(subtree.next().unwrap().data, "Giovanni");
+    /// assert_eq!(subtree.next().unwrap().data, "Johann");
+    /// assert_eq!(subtree.next().unwrap().data, "Juan");
+    /// assert_eq!(subtree.next().unwrap().data, "Ivan");
+    /// assert!(subtree.next().is_none());
     /// ```
-    pub fn traverse_tokens_preord(&self) -> PreordTokensTraversal<T> {
-        let iter = match self.root_token() {
-            None => IterEmptyOr::Empty,
-            Some(root) => IterEmptyOr::Iter(root.descendants_tokens_preord(self))
-        };
-        PreordTokensTraversal { return_root: true, iter }
-    }
+    pub fn append_subtree(&mut self, self_token: Token,
+                          other_tree: &Tree<T>, other_token: Token) {
+        match other_tree.get(other_token) {
+            None => panic!("Invalid token"),
+            Some(node) => {
+                let new_subtree_root = self_token.append(self, node.data.clone());
+                let mut index_map: HashMap<Token, Token> = HashMap::new();
+                index_map.insert(other_token, new_subtree_root);
 
-    /// Returns an iterator of node references in pre-order.
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
-    ///
-    /// let mut iter = tree.traverse_preord();
-    /// assert_eq!(iter.next().unwrap().data, 1);
-    /// assert_eq!(iter.next().unwrap().data, 2);
-    /// assert_eq!(iter.next().unwrap().data, 3);
-    /// assert_eq!(iter.next().unwrap().data, 4);
-    /// assert_eq!(iter.next().unwrap().data, 10);
-    /// assert_eq!(iter.next().unwrap().data, 20);
-    /// assert_eq!(iter.next().unwrap().data, 5);
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_preord(&self) -> PreordTraversal<T> {
-        PreordTraversal { tree: self, iter: self.traverse_tokens_preord() }
-    }
+                let mut stack = vec![other_token];
+                let mut branch = Branch::Child;
 
-    /// Returns an iterator of mutable node references in pre-order.
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
-    ///
-    /// for x in tree.traverse_preord_mut() {
-    ///     x.data += 100;
-    /// }
-    ///
-    /// let mut iter = tree.traverse_preord();
-    /// assert_eq!(iter.next().unwrap().data, 101);
-    /// assert_eq!(iter.next().unwrap().data, 102);
-    /// assert_eq!(iter.next().unwrap().data, 103);
-    /// assert_eq!(iter.next().unwrap().data, 104);
-    /// assert_eq!(iter.next().unwrap().data, 110);
-    /// assert_eq!(iter.next().unwrap().data, 120);
-    /// assert_eq!(iter.next().unwrap().data, 105);
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_preord_mut(&mut self) -> PreordTraversalMut<T> {
-        PreordTraversalMut {
-            tree: self as *mut Tree<T>,
-            iter: self.traverse_tokens_preord(),
-            marker: PhantomData::default()
-        }
-    }
-
-    /// Returns an iterator of tokens in post-order.
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// let first_child = root_token.append(&mut tree, 2usize);
-    /// let second_child = root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);
-    /// let great_grandchild = second_grandchild.append(&mut tree, 20usize);
-    /// let fourth_child = root_token.append(&mut tree, 5usize);
-    ///
-    /// let mut iter = tree.traverse_tokens_postord();
-    /// assert_eq!(iter.next(), Some(first_child));
-    /// assert_eq!(iter.next(), Some(first_grandchild));
-    /// assert_eq!(iter.next(), Some(great_grandchild));
-    /// assert_eq!(iter.next(), Some(second_grandchild));
-    /// assert_eq!(iter.next(), Some(second_child));
-    /// assert_eq!(iter.next(), Some(third_child));
-    /// assert_eq!(iter.next(), Some(fourth_child));
-    /// assert_eq!(iter.next(), Some(root_token));
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_tokens_postord(&self) -> PostordTokensTraversal<T> {
-        let iter = match self.root_token() {
-            None => IterEmptyOr::Empty,
-            Some(root) => IterEmptyOr::Iter(root.descendants_tokens_postord(self))
-        };
-        PostordTokensTraversal { return_root: true, iter }
-    }
-
-    /// Returns an iterator of node references in post-order.
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
-    ///
-    /// let mut descendants = tree.traverse_postord();
-    /// assert_eq!(descendants.next().unwrap().data, 2);
-    /// assert_eq!(descendants.next().unwrap().data, 3);
-    /// assert_eq!(descendants.next().unwrap().data, 10);
-    /// assert_eq!(descendants.next().unwrap().data, 20);
-    /// assert_eq!(descendants.next().unwrap().data, 4);
-    /// assert_eq!(descendants.next().unwrap().data, 5);
-    /// assert_eq!(descendants.next().unwrap().data, 1);
-    /// assert!(descendants.next().is_none());
-    /// ```
-    pub fn traverse_postord(&self) -> PostordTraversal<T> {
-        PostordTraversal { tree: self, iter: self.traverse_tokens_postord() }
-    }
-
-    /// Returns an iterator of mutable node references in post-order.
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
-    ///
-    /// for x in tree.traverse_postord_mut() {
-    ///     x.data += 100;
-    /// }
-    ///
-    /// let mut iter = tree.traverse_postord();
-    /// assert_eq!(iter.next().unwrap().data, 102);
-    /// assert_eq!(iter.next().unwrap().data, 103);
-    /// assert_eq!(iter.next().unwrap().data, 110);
-    /// assert_eq!(iter.next().unwrap().data, 120);
-    /// assert_eq!(iter.next().unwrap().data, 104);
-    /// assert_eq!(iter.next().unwrap().data, 105);
-    /// assert_eq!(iter.next().unwrap().data, 101);
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_postord_mut(&mut self) -> PostordTraversalMut<T> {
-        PostordTraversalMut {
-            tree: self as *mut Tree<T>,
-            iter: self.traverse_tokens_postord(),
-            marker: PhantomData::default()
-        }
-    }
-
-    /// Returns an iterator of tokens in level-order (breadth-first).
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// let first_child = root_token.append(&mut tree, 2usize);
-    /// let second_child = root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);
-    /// let fourth_child = root_token.append(&mut tree, 5usize);
-    ///
-    /// let mut iter = tree.traverse_tokens_levelord();
-    /// assert_eq!(iter.next(), Some(root_token));
-    /// assert_eq!(iter.next(), Some(first_child));
-    /// assert_eq!(iter.next(), Some(second_child));
-    /// assert_eq!(iter.next(), Some(third_child));
-    /// assert_eq!(iter.next(), Some(fourth_child));
-    /// assert_eq!(iter.next(), Some(first_grandchild));
-    /// assert_eq!(iter.next(), Some(second_grandchild));
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_tokens_levelord(&self) -> LevelordTokensTraversal<T> {
-        let iter = match self.root_token() {
-            None => IterEmptyOr::Empty,
-            Some(root) => IterEmptyOr::Iter(root.descendants_tokens_levelord(self))
-        };
-        LevelordTokensTraversal { return_root: true, iter }
-    }
-
-    /// Returns an iterator of node references in level-order (breadth-first).
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
-    ///
-    /// let mut iter = tree.traverse_levelord();
-    /// assert_eq!(iter.next().unwrap().data, 1);
-    /// assert_eq!(iter.next().unwrap().data, 2);
-    /// assert_eq!(iter.next().unwrap().data, 3);
-    /// assert_eq!(iter.next().unwrap().data, 4);
-    /// assert_eq!(iter.next().unwrap().data, 5);
-    /// assert_eq!(iter.next().unwrap().data, 10);
-    /// assert_eq!(iter.next().unwrap().data, 20);
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_levelord(&self) -> LevelordTraversal<T> {
-        LevelordTraversal { tree: self, iter: self.traverse_tokens_levelord() }
-    }
-
-    /// Returns an iterator of mutable node references in level-order.
-    ///
-    /// # Examples:
-    /// ```
-    /// use atree::Tree;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut tree, root_token) = Tree::with_root(root_data);
-    ///
-    /// let first_child = root_token.append(&mut tree, 2usize);
-    /// let second_child = root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);
-    /// let fourth_child = root_token.append(&mut tree, 5usize);
-    ///
-    /// for x in tree.traverse_levelord_mut() {
-    ///     x.data += 100;
-    /// }
-    ///
-    /// let mut iter = tree.traverse_levelord();
-    /// assert_eq!(iter.next().unwrap().data, 101);
-    /// assert_eq!(iter.next().unwrap().data, 102);
-    /// assert_eq!(iter.next().unwrap().data, 103);
-    /// assert_eq!(iter.next().unwrap().data, 104);
-    /// assert_eq!(iter.next().unwrap().data, 105);
-    /// assert_eq!(iter.next().unwrap().data, 110);
-    /// assert_eq!(iter.next().unwrap().data, 120);
-    /// assert!(iter.next().is_none());
-    /// ```
-    pub fn traverse_levelord_mut(&mut self) -> LevelordTraversalMut<T> {
-        LevelordTraversalMut {
-            tree: self as *mut Tree<T>,
-            iter: self.traverse_tokens_levelord(),
-            marker: PhantomData::default()
-        }
-    }
-
-}
-
-/// Deep copies the tree and reclaim the space freed by prior node removals
-impl<T> Tree<T> where T: Clone {
-    pub fn shrink_to_fit(&mut self) {
-        if let Some(root) = self.root_node() {
-            let old_root_token = root.token;
-            let old_root_data = root.data.clone();
-            let (mut new_tree, root_token) = Tree::with_root(old_root_data);
-            for child_token in old_root_token.children_tokens(self) {
-                root_token.append_subtree(&mut new_tree, child_token, self);
+                loop {
+                    let &token = stack.last().unwrap(); // never fails
+                    let node = &other_tree[token];  // already checked
+                    match branch {
+                        Branch::None => (),  // unreachable
+                        Branch::Child => match node.first_child {
+                            None => branch = Branch::Sibling,
+                            Some(child) => {
+                                let child_data = match other_tree.get(child) {
+                                    Some(node) => node.data.clone(),
+                                    None => panic!("Corrupt tree")
+                                };
+                                let new_parent = index_map[&token];
+                                let new_child_token =
+                                    new_parent.append(self, child_data);
+                                index_map.insert(child, new_child_token);
+                                stack.push(child);
+                            }
+                        },
+                        Branch::Sibling => match Some(other_token) == stack.pop() {
+                            true => break,
+                            false => match node.next_sibling {
+                                None => (),
+                                Some(sibling) => {
+                                    stack.push(sibling);
+                                    branch = Branch::Child;
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            *self = new_tree
         }
     }
 }

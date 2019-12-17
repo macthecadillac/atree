@@ -27,7 +27,7 @@
 //!
 //! // add stuff to the tree when we feel like it
 //! let root_data = "Indo-European";
-//! let root_node_token = tree.initialize(root_data);
+//! let root_node_token = tree.new_node(root_data);
 //! assert_eq!(tree.node_count(), 1)
 //! ```
 //!
@@ -36,7 +36,7 @@
 //! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
-//! let (mut tree, root_token) = Tree::with_root(root_data);
+//! let (mut tree, root_token) = Tree::with_data(root_data);
 //! assert_eq!(tree.node_count(), 1)
 //! ```
 //!
@@ -47,7 +47,7 @@
 //! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
-//! let (mut tree, root_token) = Tree::with_root(root_data);
+//! let (mut tree, root_token) = Tree::with_data(root_data);
 //! root_token.append(&mut tree, "Romance");
 //! assert_eq!(tree.node_count(), 2);
 //! ```
@@ -58,7 +58,7 @@
 //! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
-//! let (mut tree, root_token) = Tree::with_root(root_data);
+//! let (mut tree, root_token) = Tree::with_data(root_data);
 //!
 //! // add some more stuff to the tree
 //! let branch1 = root_token.append(&mut tree, "Romance");
@@ -95,7 +95,7 @@
 //! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
-//! let (mut tree, root_token) = Tree::with_root(root_data);
+//! let (mut tree, root_token) = Tree::with_data(root_data);
 //!
 //! // add some more stuff to the tree
 //! let branch1 = root_token.append(&mut tree, "Romance");
@@ -134,7 +134,7 @@
 //! use atree::Tree;
 //!
 //! let root_data = "Indo-European";
-//! let (mut tree, root_token) = Tree::with_root(root_data);
+//! let (mut tree, root_token) = Tree::with_data(root_data);
 //!
 //! // add some more stuff to the tree
 //! let branch1 = root_token.append(&mut tree, "Romance");

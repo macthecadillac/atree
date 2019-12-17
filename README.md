@@ -41,7 +41,7 @@ Another way is to directly initialize a tree with a root:
 use atree::Tree;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_root(root_data);
+let (mut tree, root_token) = Tree::with_data(root_data);
 assert_eq!(tree.node_count(), 1)
 ```
 
@@ -52,7 +52,7 @@ checking).
 use atree::Tree;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_root(root_data);
+let (mut tree, root_token) = Tree::with_data(root_data);
 root_token.append(&mut tree, "Romance");
 assert_eq!(tree.node_count(), 2);
 ```
@@ -63,7 +63,7 @@ To access/modify existing nodes on the tree, we can use indexing or
 use atree::Tree;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_root(root_data);
+let (mut tree, root_token) = Tree::with_data(root_data);
 
 // add some more stuff to the tree
 let branch1 = root_token.append(&mut tree, "Romance");
@@ -100,7 +100,7 @@ over tokens instead of node references. See the docs for details.
 use atree::Tree;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_root(root_data);
+let (mut tree, root_token) = Tree::with_data(root_data);
 
 // add some more stuff to the tree
 let branch1 = root_token.append(&mut tree, "Romance");
@@ -140,7 +140,7 @@ reclaim freed memory.
 use atree::Tree;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_root(root_data);
+let (mut tree, root_token) = Tree::with_data(root_data);
 
 // add some more stuff to the tree
 let branch1 = root_token.append(&mut tree, "Romance");
