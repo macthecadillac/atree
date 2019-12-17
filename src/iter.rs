@@ -1,5 +1,5 @@
 #![allow(clippy::match_bool)]
-//! A module that contains different kinds of iterators defined on the tree.
+//! A module that contains different kinds of iterators.
 use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::mem;
@@ -221,10 +221,10 @@ impl<'a, T> Iterator for Subtree<'a, T> {
 
 /// An iterator of mutable references of the subtree nodes of a given node.
 ///
-/// This `struct` is created by the `subtree_mut` method on [`Token`]. See
+/// This `struct` is created by the [`subtree_mut`] method on `Token`. See
 /// its documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.subtree_mut
+/// [`subtree_mut`]: ../struct.Token.html#method.subtree_mut
 pub struct SubtreeMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
     pub (crate) iter: SubtreeTokens<'a, T>,
@@ -341,10 +341,10 @@ pub struct Ancestors<'a, T> {
 
 /// An iterator of mutable references to siblings that precede a given node.
 ///
-/// This `struct` is created by the `preceding_siblings_mut` method on
-/// [`Token`]. See its documentation for more.
+/// This `struct` is created by the [`preceding_siblings_mut`] method on
+/// `Token`. See its documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.preceding_siblings_mut
+/// [`preceding_siblings_mut`]: ../struct.Token.html#method.preceding_siblings_mut
 pub struct PrecedingSiblingsMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
     pub (crate) node_token: Option<Token>,
@@ -353,10 +353,10 @@ pub struct PrecedingSiblingsMut<'a, T: 'a> {
 
 /// An iterator of mutable references to siblings that follow a given node.
 ///
-/// This `struct` is created by the `following_siblings_mut` method on
-/// [`Token`]. See its documentation for more.
+/// This `struct` is created by the [`following_siblings_mut`] method on
+/// `Token`. See its documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.following_siblings_mut
+/// [`following_siblings_mut`]: ../struct.Token.html#method.following_siblings_mut
 pub struct FollowingSiblingsMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
     pub (crate) node_token: Option<Token>,
@@ -365,10 +365,10 @@ pub struct FollowingSiblingsMut<'a, T: 'a> {
 
 /// An iterator of mutable references to the children of a given node.
 ///
-/// This `struct` is created by the `children_mut` method on
-/// [`Token`]. See its documentation for more.
+/// This `struct` is created by the [`children_mut`] method on
+/// `Token`. See its documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.children_mut
+/// [`children_mut`]: ../struct.Token.html#method.children_mut
 pub struct ChildrenMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
     pub (crate) node_token: Option<Token>,
@@ -377,10 +377,10 @@ pub struct ChildrenMut<'a, T: 'a> {
 
 /// An iterator of mutable references to the ancestors of a given node.
 ///
-/// This `struct` is created by the `ancestors_mut` method on
-/// [`Token`]. See its documentation for more.
+/// This `struct` is created by the [`ancestors_mut`] method on
+/// `Token`. See its documentation for more.
 ///
-/// [`Token`]: ../struct.Token.html#method.ancestors_mut
+/// [`ancestors_mut`]: ../struct.Token.html#method.ancestors_mut
 pub struct AncestorsMut<'a, T: 'a> {
     pub (crate) tree: *mut Tree<T>,
     pub (crate) node_token: Option<Token>,

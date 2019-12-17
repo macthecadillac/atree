@@ -3,7 +3,7 @@ use crate::tree::Tree;
 use crate::token::Token;
 use crate::iter::*;
 
-/// A node holds data on the tree. `Node<T>` can be accessed by indexing
+/// A node holds data in the arena. `Node<T>` can be accessed by indexing
 /// [`Tree<T>`] with [`Token`], using the [`get`] or [`get_mut`] methods of
 /// `Tree<T>`, or through tree iterators.
 ///
@@ -13,12 +13,17 @@ use crate::iter::*;
 /// [`get_mut`]: struct.Tree.html#method.get_mut
 #[derive(Default, Debug, Clone)]
 pub struct Node<T> {
-    /// The `data` field
+    /// The `data` field.
     pub data: T,
+    /// The token that refers to the current node.
     pub (crate) token: Token,
+    /// The parent node.
     pub (crate) parent: Option<Token>,
+    /// The "previous sibling" node.
     pub (crate) previous_sibling: Option<Token>,
+    /// The "next sibling" node.
     pub (crate) next_sibling: Option<Token>,
+    /// The "first child" node.
     pub (crate) first_child: Option<Token>,
 }
 
@@ -34,11 +39,11 @@ impl<T> Node<T> {
     /// use atree::Tree;
     /// use atree::Node;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let next_node_token = root_token.append(&mut tree, 2usize);
-    /// let third_node_token = next_node_token.append(&mut tree, 3usize);
+    /// let next_node_token = root_token.append(&mut tree, "Germanic");
+    /// let third_node_token = next_node_token.append(&mut tree, "English");
     ///
     /// let third_node = &tree[third_node_token];
     /// let mut ancestors_tokens = third_node.ancestors_tokens(&tree);
@@ -59,13 +64,13 @@ impl<T> Node<T> {
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child_token = root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
+    /// let first_child_token = root_token.append(&mut tree, "Germanic");
+    /// let second_child_token = root_token.append(&mut tree, "Romance");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Hellenic");
     ///
     /// let third_child = &tree[third_child_token];
     /// let mut sibling_tokens = third_child.preceding_siblings_tokens(&tree);
@@ -85,13 +90,13 @@ impl<T> Node<T> {
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// let fourth_child_token = root_token.append(&mut tree, 5usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// let second_child_token = root_token.append(&mut tree, "Germanic");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// let fourth_child_token = root_token.append(&mut tree, "Hellenic");
     ///
     /// let second_child = &tree[second_child_token];
     /// let mut sibling_tokens = second_child.following_siblings_tokens(&tree);
@@ -111,13 +116,13 @@ impl<T> Node<T> {
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child_token = root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// let fourth_child_token = root_token.append(&mut tree, 5usize);
+    /// let first_child_token = root_token.append(&mut tree, "Romance");
+    /// let second_child_token = root_token.append(&mut tree, "Germanic");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// let fourth_child_token = root_token.append(&mut tree, "Hellenic");
     ///
     /// let root = &tree[root_token];
     /// let mut children_tokens = root_token.children_tokens(&tree);
@@ -132,24 +137,24 @@ impl<T> Node<T> {
         self.token.children_tokens(tree)
     }
 
-    /// Returns an iterator of ancestor nodes.
+    /// Returns an iterator of references of ancestor nodes.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let next_node_token = root_token.append(&mut tree, 2usize);
-    /// let third_node_token = next_node_token.append(&mut tree, 3usize);
+    /// let next_node_token = root_token.append(&mut tree, "Germanic");
+    /// let third_node_token = next_node_token.append(&mut tree, "Swedish");
     ///
     /// let third_node = &tree[third_node_token];
     /// let mut ancestors = third_node.ancestors(&tree);
     ///
-    /// assert_eq!(ancestors.next().unwrap().data, 2usize);
-    /// assert_eq!(ancestors.next().unwrap().data, 1usize);
+    /// assert_eq!(ancestors.next().unwrap().data, "Germanic");
+    /// assert_eq!(ancestors.next().unwrap().data, "Indo-European");
     /// assert!(ancestors.next().is_none());
     /// ```
     pub fn ancestors<'a>(&self, tree: &'a Tree<T>)
@@ -165,18 +170,18 @@ impl<T> Node<T> {
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// let second_child_token = root_token.append(&mut tree, "Germanic");
+    /// root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Hellenic");
     ///
     /// let second_child = &tree[second_child_token];
     /// let mut siblings = second_child_token.following_siblings(&tree);
-    /// assert_eq!(siblings.next().unwrap().data, 4usize);
-    /// assert_eq!(siblings.next().unwrap().data, 5usize);
+    /// assert_eq!(siblings.next().unwrap().data, "Slavic");
+    /// assert_eq!(siblings.next().unwrap().data, "Hellenic");
     /// assert!(siblings.next().is_none());
     /// ```
     pub fn following_siblings<'a>(&self, tree: &'a Tree<T>)
@@ -192,18 +197,18 @@ impl<T> Node<T> {
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// root_token.append(&mut tree, "Germanic");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Celtic");
     ///
     /// let third_child = &tree[third_child_token];
     /// let mut siblings = third_child.preceding_siblings(&tree);
-    /// assert_eq!(siblings.next().unwrap().data, 3usize);
-    /// assert_eq!(siblings.next().unwrap().data, 2usize);
+    /// assert_eq!(siblings.next().unwrap().data, "Germanic");
+    /// assert_eq!(siblings.next().unwrap().data, "Romance");
     /// assert!(siblings.next().is_none());
     /// ```
     pub fn preceding_siblings<'a>(&self, tree: &'a Tree<T>)
@@ -218,27 +223,27 @@ impl<T> Node<T> {
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child_token = root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// let fourth_child_token = root_token.append(&mut tree, 5usize);
+    /// let first_child_token = root_token.append(&mut tree, "Germanic");
+    /// let second_child_token = root_token.append(&mut tree, "Romance");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// let fourth_child_token = root_token.append(&mut tree, "Celtic");
     ///
     /// let root = &tree[root_token];
     /// let mut children = root.children(&tree);
-    /// assert_eq!(children.next().unwrap().data, 2usize);
-    /// assert_eq!(children.next().unwrap().data, 3usize);
-    /// assert_eq!(children.next().unwrap().data, 4usize);
-    /// assert_eq!(children.next().unwrap().data, 5usize);
+    /// assert_eq!(children.next().unwrap().data, "Germanic");
+    /// assert_eq!(children.next().unwrap().data, "Romance");
+    /// assert_eq!(children.next().unwrap().data, "Slavic");
+    /// assert_eq!(children.next().unwrap().data, "Celtic");
     /// assert!(children.next().is_none());
     /// ```
     pub fn children<'a>(&self, tree: &'a Tree<T>) -> Children<'a, T> {
         self.token.children(tree)
     }
 
-    /// Returns an iterator of tokens of subtree nodes.
+    /// Returns an iterator of tokens of subtree nodes of the given node.
     ///
     /// # Examples:
     ///
@@ -246,15 +251,15 @@ impl<T> Node<T> {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child = root_token.append(&mut tree, 2usize);
-    /// let second_child = root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);
-    /// let fourth_child = root_token.append(&mut tree, 5usize);
+    /// let first_child = root_token.append(&mut tree, "Romance");
+    /// let second_child = root_token.append(&mut tree, "Germanic");
+    /// let third_child = root_token.append(&mut tree, "Slavic");
+    /// let first_grandchild = second_child.append(&mut tree, "English");
+    /// let second_grandchild = second_child.append(&mut tree, "Icelandic");
+    /// let fourth_child = root_token.append(&mut tree, "Celtic");
     ///
     /// let root = &tree[root_token];
     /// let mut subtree = root.subtree_tokens(&tree, TraversalOrder::Pre);
@@ -279,7 +284,7 @@ impl<T> Node<T> {
         self.token.subtree_tokens(tree, order)
     }
 
-    /// Returns an iterator of references of subtree nodes.
+    /// Returns an iterator of references of subtree nodes of the given node.
     ///
     /// # Examples:
     ///
@@ -287,25 +292,25 @@ impl<T> Node<T> {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// root_token.append(&mut tree, "Germanic");
+    /// let third_child = root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Celtic");
+    /// third_child.append(&mut tree, "Polish");
+    /// third_child.append(&mut tree, "Slovakian");
     ///
     /// let root = &tree[root_token];
     /// let mut subtree = root.subtree(&tree, TraversalOrder::Pre);
-    /// assert_eq!(subtree.next().unwrap().data, 1);
-    /// assert_eq!(subtree.next().unwrap().data, 2);
-    /// assert_eq!(subtree.next().unwrap().data, 3);
-    /// assert_eq!(subtree.next().unwrap().data, 4);
-    /// assert_eq!(subtree.next().unwrap().data, 10);
-    /// assert_eq!(subtree.next().unwrap().data, 20);
-    /// assert_eq!(subtree.next().unwrap().data, 5);
+    /// assert_eq!(subtree.next().unwrap().data, "Indo-European");
+    /// assert_eq!(subtree.next().unwrap().data, "Romance");
+    /// assert_eq!(subtree.next().unwrap().data, "Germanic");
+    /// assert_eq!(subtree.next().unwrap().data, "Slavic");
+    /// assert_eq!(subtree.next().unwrap().data, "Polish");
+    /// assert_eq!(subtree.next().unwrap().data, "Slovakian");
+    /// assert_eq!(subtree.next().unwrap().data, "Celtic");
     /// assert!(subtree.next().is_none());
     /// ```
     pub fn subtree<'a>(&self, tree: &'a Tree<T>, order: TraversalOrder)
@@ -355,25 +360,25 @@ mod test {
 
     #[test]
     fn subtree_postord() {
-        let root_data = 1usize;
+        let root_data = "Indo-European";
         let (mut tree, root_token) = Tree::with_data(root_data);
        
-        root_token.append(&mut tree, 2usize);
-        root_token.append(&mut tree, 3usize);
-        let third_child = root_token.append(&mut tree, 4usize);
-        root_token.append(&mut tree, 5usize);
-        third_child.append(&mut tree, 10usize);
-        third_child.append(&mut tree, 20usize);
+        root_token.append(&mut tree, "Romance");
+        root_token.append(&mut tree, "Germanic");
+        let third_child = root_token.append(&mut tree, "Celtic");
+        root_token.append(&mut tree, "Slavic");
+        third_child.append(&mut tree, "Ulster");
+        third_child.append(&mut tree, "Gaulish");
        
         let root = &tree[root_token];
         let mut subtree = root.subtree(&tree, TraversalOrder::Post);
-        assert_eq!(subtree.next().unwrap().data, 2);
-        assert_eq!(subtree.next().unwrap().data, 3);
-        assert_eq!(subtree.next().unwrap().data, 10);
-        assert_eq!(subtree.next().unwrap().data, 20);
-        assert_eq!(subtree.next().unwrap().data, 4);
-        assert_eq!(subtree.next().unwrap().data, 5);
-        assert_eq!(subtree.next().unwrap().data, 1);
+        assert_eq!(subtree.next().unwrap().data, "Romance");
+        assert_eq!(subtree.next().unwrap().data, "Germanic");
+        assert_eq!(subtree.next().unwrap().data, "Ulster");
+        assert_eq!(subtree.next().unwrap().data, "Gaulish");
+        assert_eq!(subtree.next().unwrap().data, "Celtic");
+        assert_eq!(subtree.next().unwrap().data, "Slavic");
+        assert_eq!(subtree.next().unwrap().data, "Indo-European");
         assert!(subtree.next().is_none());
     }
 
@@ -403,25 +408,25 @@ mod test {
 
     #[test]
     fn subtree_levelord() {
-        let root_data = 1usize;
+        let root_data = "Indo-European";
         let (mut tree, root_token) = Tree::with_data(root_data);
        
-        root_token.append(&mut tree, 2usize);
-        root_token.append(&mut tree, 3usize);
-        let third_child = root_token.append(&mut tree, 4usize);
-        root_token.append(&mut tree, 5usize);
-        third_child.append(&mut tree, 10usize);
-        third_child.append(&mut tree, 20usize);
+        root_token.append(&mut tree, "Romance");
+        root_token.append(&mut tree, "Germanic");
+        let third_child = root_token.append(&mut tree, "Slavic");
+        root_token.append(&mut tree, "Hellenic");
+        third_child.append(&mut tree, "Russian");
+        third_child.append(&mut tree, "Ukrainian");
        
         let root = &tree[root_token];
         let mut subtree = root.subtree(&tree, TraversalOrder::Level);
-        assert_eq!(subtree.next().unwrap().data, 1);
-        assert_eq!(subtree.next().unwrap().data, 2);
-        assert_eq!(subtree.next().unwrap().data, 3);
-        assert_eq!(subtree.next().unwrap().data, 4);
-        assert_eq!(subtree.next().unwrap().data, 5);
-        assert_eq!(subtree.next().unwrap().data, 10);
-        assert_eq!(subtree.next().unwrap().data, 20);
+        assert_eq!(subtree.next().unwrap().data, "Indo-European");
+        assert_eq!(subtree.next().unwrap().data, "Romance");
+        assert_eq!(subtree.next().unwrap().data, "Germanic");
+        assert_eq!(subtree.next().unwrap().data, "Slavic");
+        assert_eq!(subtree.next().unwrap().data, "Hellenic");
+        assert_eq!(subtree.next().unwrap().data, "Russian");
+        assert_eq!(subtree.next().unwrap().data, "Ukrainian");
         assert!(subtree.next().is_none());
     }
 }

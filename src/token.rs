@@ -6,7 +6,7 @@ use crate::iter::*;
 use crate::node::Node;
 use crate::tree::Tree;
 
-/// A `Token` is a handle to a node on the tree.
+/// A `Token` is a handle to a node in the arena.
 #[derive(Clone, Copy, Eq, PartialEq, Default, Debug, Hash)]
 pub struct Token{
     pub (crate) index: usize
@@ -17,7 +17,7 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -25,16 +25,16 @@ impl Token {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let next_node_token = root_token.append(&mut tree, 2usize);
-    /// next_node_token.append(&mut tree, 3usize);
-    /// let mut descendants = root_token.subtree(&tree, TraversalOrder::Pre);
+    /// let next_node_token = root_token.append(&mut tree, "Germanic");
+    /// next_node_token.append(&mut tree, "Romance");
+    /// let mut subtree = root_token.subtree(&tree, TraversalOrder::Pre);
     ///
-    /// assert_eq!(descendants.next().unwrap().data, 1usize);
-    /// assert_eq!(descendants.next().unwrap().data, 2usize);
-    /// assert_eq!(descendants.next().unwrap().data, 3usize);
+    /// assert_eq!(subtree.next().unwrap().data, "Indo-European");
+    /// assert_eq!(subtree.next().unwrap().data, "Germanic");
+    /// assert_eq!(subtree.next().unwrap().data, "Romance");
     /// ```
     pub fn append<T>(self, tree: &mut Tree<T>, data: T) -> Token {
         let new_node_token = tree.arena.head();
@@ -64,12 +64,12 @@ impl Token {
         new_node_token
     }
 
-    /// Creates a new node with the given data and set as the previous sibling
+    /// Creates a new node with the given data and sets as the previous sibling
     /// of the current node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -77,21 +77,22 @@ impl Token {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let child2 = root_token.append(&mut tree, 3usize);
-    /// let child4 = root_token.append(&mut tree, 5usize);
-    /// child2.append(&mut tree, 10usize);
+    /// let child2 = root_token.append(&mut tree, "Germanic");
+    /// let child4 = root_token.append(&mut tree, "Slavic");
+    /// child2.append(&mut tree, "English");
     /// // insert in between children 2 and 4
-    /// let child3 = child4.insert_before(&mut tree, 4usize);
+    /// let child3 = child4.insert_before(&mut tree, "Romance");
     /// // insert before child 2
-    /// let child1 = child2.insert_before(&mut tree, 2usize);
+    /// let child1 = child2.insert_before(&mut tree, "Celtic");
     ///
     /// let subtree: Vec<_> = root_token.subtree(&tree, TraversalOrder::Pre)
     ///     .map(|x| x.data)
     ///     .collect();
-    /// assert_eq!(&[1usize, 2, 3, 10, 4, 5], &subtree[..]);
+    /// assert_eq!(&["Indo-European", "Celtic", "Germanic", "English", "Romance", "Slavic"],
+    ///            &subtree[..]);
     /// ```
     pub fn insert_before<T>(self, tree: &mut Tree<T>, data: T) -> Token {
         let new_node_token = tree.arena.head();
@@ -133,12 +134,12 @@ impl Token {
         new_node_token
     }
 
-    /// Creates a new node with the given data and set as the next sibling of
+    /// Creates a new node with the given data and sets as the next sibling of
     /// the current node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -146,21 +147,22 @@ impl Token {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let child1 = root_token.append(&mut tree, 2usize);
-    /// let child3 = root_token.append(&mut tree, 4usize);
-    /// child1.append(&mut tree, 10usize);
+    /// let child1 = root_token.append(&mut tree, "Romance");
+    /// let child3 = root_token.append(&mut tree, "Germanic");
+    /// child1.append(&mut tree, "French");
     /// // insert betwern children 1 and 4
-    /// let child2 = child1.insert_after(&mut tree, 3usize);
+    /// let child2 = child1.insert_after(&mut tree, "Celtic");
     /// // insert after child 3
-    /// child3.insert_after(&mut tree, 5usize);
+    /// child3.insert_after(&mut tree, "Slavic");
     ///
     /// let subtree: Vec<_> = root_token.subtree(&tree, TraversalOrder::Pre)
     ///     .map(|x| x.data)
     ///     .collect();
-    /// assert_eq!(&[1usize, 2, 10, 3, 4, 5], &subtree[..]);
+    /// assert_eq!(&["Indo-European", "Romance", "French", "Celtic", "Germanic", "Slavic"],
+    ///            &subtree[..]);
     /// ```
     pub fn insert_after<T>(self, tree: &mut Tree<T>, data: T) -> Token {
         let new_node_token = tree.arena.head();
@@ -196,21 +198,21 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let next_node_token = root_token.append(&mut tree, 2usize);
-    /// let third_node_token = next_node_token.append(&mut tree, 3usize);
-    /// let mut ancestors_tokens = third_node_token.ancestors_tokens(&tree);
+    /// let child_token = root_token.append(&mut tree, "Germanic");
+    /// let grandchild_token = child_token.append(&mut tree, "English");
+    /// let mut ancestors_tokens = grandchild_token.ancestors_tokens(&tree);
     ///
-    /// assert_eq!(ancestors_tokens.next(), Some(next_node_token));
+    /// assert_eq!(ancestors_tokens.next(), Some(child_token));
     /// assert_eq!(ancestors_tokens.next(), Some(root_token));
     /// assert!(ancestors_tokens.next().is_none());
     /// ```
@@ -227,20 +229,20 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child_token = root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
+    /// let first_child_token = root_token.append(&mut tree, "Germanic");
+    /// let second_child_token = root_token.append(&mut tree, "Romance");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Hellenic");
     ///
     /// let mut sibling_tokens = third_child_token.preceding_siblings_tokens(&tree);
     /// assert_eq!(sibling_tokens.next(), Some(second_child_token));
@@ -260,20 +262,20 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// let fourth_child_token = root_token.append(&mut tree, 5usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// let second_child_token = root_token.append(&mut tree, "Germanic");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// let fourth_child_token = root_token.append(&mut tree, "Hellenic");
     ///
     /// let mut sibling_tokens = second_child_token.following_siblings_tokens(&tree);
     /// assert_eq!(sibling_tokens.next(), Some(third_child_token));
@@ -293,20 +295,20 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child_token = root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// let fourth_child_token = root_token.append(&mut tree, 5usize);
+    /// let first_child_token = root_token.append(&mut tree, "Romance");
+    /// let second_child_token = root_token.append(&mut tree, "Germanic");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// let fourth_child_token = root_token.append(&mut tree, "Hellenic");
     ///
     /// let mut children_tokens = root_token.children_tokens(&tree);
     /// assert_eq!(children_tokens.next(), Some(first_child_token));
@@ -324,26 +326,26 @@ impl Token {
         ChildrenTokens { tree, node_token: first_child }
     }
 
-    /// Returns an iterator of ancestor nodes.
+    /// Returns an iterator of references of ancestor nodes.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let next_node_token = root_token.append(&mut tree, 2usize);
-    /// let third_node_token = next_node_token.append(&mut tree, 3usize);
-    /// let mut ancestors = third_node_token.ancestors(&tree);
+    /// let child_token = root_token.append(&mut tree, "Germanic");
+    /// let grandchild_token = child_token.append(&mut tree, "Swedish");
+    /// let mut ancestors = grandchild_token.ancestors(&tree);
     ///
-    /// assert_eq!(ancestors.next().unwrap().data, 2usize);
-    /// assert_eq!(ancestors.next().unwrap().data, 1usize);
+    /// assert_eq!(ancestors.next().unwrap().data, "Germanic");
+    /// assert_eq!(ancestors.next().unwrap().data, "Indo-European");
     /// assert!(ancestors.next().is_none());
     /// ```
     pub fn ancestors<'a, T>(self, tree: &'a Tree<T>) -> Ancestors<'a, T> {
@@ -355,24 +357,24 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// root_token.append(&mut tree, "Germanic");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Celtic");
     ///
     /// let mut siblings = third_child_token.preceding_siblings(&tree);
-    /// assert_eq!(siblings.next().unwrap().data, 3usize);
-    /// assert_eq!(siblings.next().unwrap().data, 2usize);
+    /// assert_eq!(siblings.next().unwrap().data, "Germanic");
+    /// assert_eq!(siblings.next().unwrap().data, "Romance");
     /// assert!(siblings.next().is_none());
     /// ```
     pub fn preceding_siblings<'a, T>(self, tree: &'a Tree<T>)
@@ -385,24 +387,24 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// let second_child_token = root_token.append(&mut tree, "Germanic");
+    /// root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Hellenic");
     ///
     /// let mut siblings = second_child_token.following_siblings(&tree);
-    /// assert_eq!(siblings.next().unwrap().data, 4usize);
-    /// assert_eq!(siblings.next().unwrap().data, 5usize);
+    /// assert_eq!(siblings.next().unwrap().data, "Slavic");
+    /// assert_eq!(siblings.next().unwrap().data, "Hellenic");
     /// assert!(siblings.next().is_none());
     /// ```
     pub fn following_siblings<'a, T>(self, tree: &'a Tree<T>)
@@ -414,26 +416,26 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
     /// ```
     /// use atree::Tree;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child_token = root_token.append(&mut tree, 2usize);
-    /// let second_child_token = root_token.append(&mut tree, 3usize);
-    /// let third_child_token = root_token.append(&mut tree, 4usize);
-    /// let fourth_child_token = root_token.append(&mut tree, 5usize);
+    /// let first_child_token = root_token.append(&mut tree, "Germanic");
+    /// let second_child_token = root_token.append(&mut tree, "Romance");
+    /// let third_child_token = root_token.append(&mut tree, "Slavic");
+    /// let fourth_child_token = root_token.append(&mut tree, "Celtic");
     ///
     /// let mut children = root_token.children(&tree);
-    /// assert_eq!(children.next().unwrap().data, 2usize);
-    /// assert_eq!(children.next().unwrap().data, 3usize);
-    /// assert_eq!(children.next().unwrap().data, 4usize);
-    /// assert_eq!(children.next().unwrap().data, 5usize);
+    /// assert_eq!(children.next().unwrap().data, "Germanic");
+    /// assert_eq!(children.next().unwrap().data, "Romance");
+    /// assert_eq!(children.next().unwrap().data, "Slavic");
+    /// assert_eq!(children.next().unwrap().data, "Celtic");
     /// assert!(children.next().is_none());
     /// ```
     pub fn children<'a, T>(self, tree: &'a Tree<T>) -> Children<'a, T> {
@@ -444,7 +446,7 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -479,12 +481,12 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of mutable references for sibling nodes that follow
+    /// Returns an iterator of mutable references of sibling nodes that follow
     /// the current node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -523,12 +525,12 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of mutable references for sibling nodes that precede
+    /// Returns an iterator of mutable references of sibling nodes that precede
     /// the current node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -572,7 +574,7 @@ impl Token {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -613,11 +615,11 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of tokens of subtree nodes.
+    /// Returns an iterator of tokens of subtree nodes of the given node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -625,15 +627,15 @@ impl Token {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// let first_child = root_token.append(&mut tree, 2usize);
-    /// let second_child = root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// let first_grandchild = second_child.append(&mut tree, 10usize);
-    /// let second_grandchild = second_child.append(&mut tree, 20usize);
-    /// let fourth_child = root_token.append(&mut tree, 5usize);
+    /// let first_child = root_token.append(&mut tree, "Romance");
+    /// let second_child = root_token.append(&mut tree, "Germanic");
+    /// let third_child = root_token.append(&mut tree, "Slavic");
+    /// let first_grandchild = second_child.append(&mut tree, "English");
+    /// let second_grandchild = second_child.append(&mut tree, "Icelandic");
+    /// let fourth_child = root_token.append(&mut tree, "Celtic");
     ///
     /// let mut subtree = root_token.subtree_tokens(&tree, TraversalOrder::Pre);
     /// assert_eq!(subtree.next(), Some(root_token));
@@ -692,11 +694,11 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of references of subtree nodes.
+    /// Returns an iterator of references of subtree nodes of the given node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -704,24 +706,24 @@ impl Token {
     /// use atree::Tree;
     /// use atree::iter::TraversalOrder;
     ///
-    /// let root_data = 1usize;
+    /// let root_data = "Indo-European";
     /// let (mut tree, root_token) = Tree::with_data(root_data);
     ///
-    /// root_token.append(&mut tree, 2usize);
-    /// root_token.append(&mut tree, 3usize);
-    /// let third_child = root_token.append(&mut tree, 4usize);
-    /// root_token.append(&mut tree, 5usize);
-    /// third_child.append(&mut tree, 10usize);
-    /// third_child.append(&mut tree, 20usize);
+    /// root_token.append(&mut tree, "Romance");
+    /// root_token.append(&mut tree, "Germanic");
+    /// let third_child = root_token.append(&mut tree, "Slavic");
+    /// root_token.append(&mut tree, "Celtic");
+    /// third_child.append(&mut tree, "Polish");
+    /// third_child.append(&mut tree, "Slovakian");
     ///
     /// let mut subtree = root_token.subtree(&tree, TraversalOrder::Pre);
-    /// assert_eq!(subtree.next().unwrap().data, 1);
-    /// assert_eq!(subtree.next().unwrap().data, 2);
-    /// assert_eq!(subtree.next().unwrap().data, 3);
-    /// assert_eq!(subtree.next().unwrap().data, 4);
-    /// assert_eq!(subtree.next().unwrap().data, 10);
-    /// assert_eq!(subtree.next().unwrap().data, 20);
-    /// assert_eq!(subtree.next().unwrap().data, 5);
+    /// assert_eq!(subtree.next().unwrap().data, "Indo-European");
+    /// assert_eq!(subtree.next().unwrap().data, "Romance");
+    /// assert_eq!(subtree.next().unwrap().data, "Germanic");
+    /// assert_eq!(subtree.next().unwrap().data, "Slavic");
+    /// assert_eq!(subtree.next().unwrap().data, "Polish");
+    /// assert_eq!(subtree.next().unwrap().data, "Slovakian");
+    /// assert_eq!(subtree.next().unwrap().data, "Celtic");
     /// assert!(subtree.next().is_none());
     /// ```
     pub fn subtree<'a, T>(self, tree: &'a Tree<T>, order: TraversalOrder)
@@ -732,11 +734,12 @@ impl Token {
         }
     }
 
-    /// Returns an iterator of mutable references of subtree nodes.
+    /// Returns an iterator of mutable references of subtree nodes of the given
+    /// node.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the tree.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -859,47 +862,47 @@ mod test {
 
     #[test]
     fn subtree_postord() {
-        let root_data = 1usize;
+        let root_data = "Indo-European";
         let (mut tree, root_token) = Tree::with_data(root_data);
        
-        root_token.append(&mut tree, 2usize);
-        root_token.append(&mut tree, 3usize);
-        let third_child = root_token.append(&mut tree, 4usize);
-        root_token.append(&mut tree, 5usize);
-        third_child.append(&mut tree, 10usize);
-        third_child.append(&mut tree, 20usize);
+        root_token.append(&mut tree, "Romance");
+        root_token.append(&mut tree, "Germanic");
+        let third_child = root_token.append(&mut tree, "Celtic");
+        root_token.append(&mut tree, "Slavic");
+        third_child.append(&mut tree, "Ulster");
+        third_child.append(&mut tree, "Gaulish");
        
         let mut subtree = root_token.subtree(&tree, TraversalOrder::Post);
-        assert_eq!(subtree.next().unwrap().data, 2);
-        assert_eq!(subtree.next().unwrap().data, 3);
-        assert_eq!(subtree.next().unwrap().data, 10);
-        assert_eq!(subtree.next().unwrap().data, 20);
-        assert_eq!(subtree.next().unwrap().data, 4);
-        assert_eq!(subtree.next().unwrap().data, 5);
-        assert_eq!(subtree.next().unwrap().data, 1);
+        assert_eq!(subtree.next().unwrap().data, "Romance");
+        assert_eq!(subtree.next().unwrap().data, "Germanic");
+        assert_eq!(subtree.next().unwrap().data, "Ulster");
+        assert_eq!(subtree.next().unwrap().data, "Gaulish");
+        assert_eq!(subtree.next().unwrap().data, "Celtic");
+        assert_eq!(subtree.next().unwrap().data, "Slavic");
+        assert_eq!(subtree.next().unwrap().data, "Indo-European");
         assert!(subtree.next().is_none());
     }
 
     #[test]
     fn subtree_levelord() {
-        let root_data = 1usize;
+        let root_data = "Indo-European";
         let (mut tree, root_token) = Tree::with_data(root_data);
        
-        root_token.append(&mut tree, 2usize);
-        root_token.append(&mut tree, 3usize);
-        let third_child = root_token.append(&mut tree, 4usize);
-        root_token.append(&mut tree, 5usize);
-        third_child.append(&mut tree, 10usize);
-        third_child.append(&mut tree, 20usize);
+        root_token.append(&mut tree, "Romance");
+        root_token.append(&mut tree, "Germanic");
+        let third_child = root_token.append(&mut tree, "Slavic");
+        root_token.append(&mut tree, "Hellenic");
+        third_child.append(&mut tree, "Russian");
+        third_child.append(&mut tree, "Ukrainian");
        
         let mut subtree = root_token.subtree(&tree, TraversalOrder::Level);
-        assert_eq!(subtree.next().unwrap().data, 1);
-        assert_eq!(subtree.next().unwrap().data, 2);
-        assert_eq!(subtree.next().unwrap().data, 3);
-        assert_eq!(subtree.next().unwrap().data, 4);
-        assert_eq!(subtree.next().unwrap().data, 5);
-        assert_eq!(subtree.next().unwrap().data, 10);
-        assert_eq!(subtree.next().unwrap().data, 20);
+        assert_eq!(subtree.next().unwrap().data, "Indo-European");
+        assert_eq!(subtree.next().unwrap().data, "Romance");
+        assert_eq!(subtree.next().unwrap().data, "Germanic");
+        assert_eq!(subtree.next().unwrap().data, "Slavic");
+        assert_eq!(subtree.next().unwrap().data, "Hellenic");
+        assert_eq!(subtree.next().unwrap().data, "Russian");
+        assert_eq!(subtree.next().unwrap().data, "Ukrainian");
         assert!(subtree.next().is_none());
     }
 
