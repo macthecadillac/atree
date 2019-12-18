@@ -280,29 +280,29 @@ impl<T> Arena<T> {
                 (Some(_), Some(otkn), Some(ytkn)) => {
                     match self.get_mut(otkn) {
                         Some(o) => o.next_sibling = Some(ytkn),
-                        None => panic!("Corrupt tree")
+                        None => panic!("Corrupt arena")
                     }
                     match self.get_mut(ytkn) {
                         Some(y) => y.previous_sibling = Some(otkn),
-                        None => panic!("Corrupt tree")
+                        None => panic!("Corrupt arena")
                     }
                 },
                 (Some(_), Some(otkn), None) => match self.get_mut(otkn) {
                     Some(o) => o.next_sibling = None,
-                    None => panic!("Corrupt tree")
+                    None => panic!("Corrupt arena")
                 },
                 (Some(ptkn), None, Some(ytkn)) => match self.get_mut(ptkn) {
                     Some(p) => p.first_child = Some(ytkn),
-                    None => panic!("Corrupt tree")
+                    None => panic!("Corrupt arena")
                 },
                 (Some(ptkn), None, None) => match self.get_mut(ptkn) {
                     Some(p) => p.first_child = None,
-                    None => panic!("Corrupt tree")
+                    None => panic!("Corrupt arena")
                 },
                 (None, None, None) => (),  // empty tree
                 (None, None, Some(_))
                     | (None, Some(_), None)
-                    | (None, Some(_), Some(_)) => panic!("Corrupt tree")
+                    | (None, Some(_), Some(_)) => panic!("Corrupt arena")
             }
         }
     }
@@ -413,7 +413,7 @@ impl<T> Arena<T> where T: Clone {
                             Some(child) => {
                                 let child_data = match other_tree.get(child) {
                                     Some(node) => node.data.clone(),
-                                    None => panic!("Corrupt tree")
+                                    None => panic!("Corrupt arena")
                                 };
                                 let new_parent = index_map[&token];
                                 let new_child_token =
