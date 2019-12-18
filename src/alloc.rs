@@ -80,10 +80,11 @@ impl<T> Allocator<T> {
             Some(n) => self.data[n] = Cell::Nothing(Some(first_new_cell_indx)),
             None => self.head = Some(first_new_cell_indx)
         };
-        for i in (first_new_cell_indx + 1..).take(additional - 1) {
-            self.data.push(Cell::Nothing(Some(i)));
-        }
-        self.data.push(Cell::Nothing(None));
+        let new_cells = (first_new_cell_indx + 1..)
+            .take(additional - 1)
+            .map(|i| Cell::Nothing(Some(i)))
+            .chain(std::iter::once(Cell::Nothing(None)));
+        self.data.extend(new_cells);
     }
 
     pub fn insert(&mut self, data: T) -> Token {
