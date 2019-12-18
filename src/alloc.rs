@@ -2,27 +2,28 @@
 #![allow(clippy::new_without_default)]
 #![allow(unused)]
 use std::mem;
+use std::num::NonZeroUsize;
 
 use crate::token::Token;
 
 #[derive(Clone, Debug)]
 pub struct Allocator<T> {
     data: Vec<Cell<T>>,
-    head: Option<usize>,
+    head: Option<NonZeroUsize>,
     len: usize
 }
 
 #[derive(Clone, Debug)]
 enum Cell<T> {
     Just(T),
-    Nothing(Option<usize>)
+    Nothing(Option<NonZeroUsize>)
 }
 
 impl<T> Default for Allocator<T> {
     fn default() -> Self {
         Allocator {
             data: vec![Cell::Nothing(None)],
-            head: Some(0),
+            head: Some(NonZeroUsize::new(1).unwrap()),
             len: 0
         }
     }
@@ -32,7 +33,7 @@ impl<T> Allocator<T> {
     pub fn new() -> Self {
         Allocator {
             data: vec![Cell::Nothing(None)],
-            head: Some(0),
+            head: Some(NonZeroUsize::new(1).unwrap()),
             len: 0
         }
     }
@@ -57,9 +58,9 @@ impl<T> Allocator<T> {
         self.get(token).is_some()
     }
 
-    fn find_last_available(&self) -> Option<usize> {
-        fn aux<T>(data: &[Cell<T>], indx: usize) -> Option<usize> {
-            match data.get(indx) {
+    fn find_last_available(&self) -> Option<NonZeroUsize> {
+        fn aux<T>(data: &[Cell<T>], indx: NonZeroUsize) -> Option<NonZeroUsize> {
+            match data.get(indx.get() - 1) {  // get back to zero-based indexing
                 Some(Cell::Just(_)) | None => panic!("corrpt arena"),
                 Some(Cell::Nothing(next_head)) => match next_head {
                     Some(n) => aux(data, *n),
@@ -75,14 +76,14 @@ impl<T> Allocator<T> {
 
     pub fn reserve(&mut self, additional: usize) {
         self.data.reserve_exact(additional);
-        let first_new_cell_indx = self.data.len();
+        let head_indx = NonZeroUsize::new(self.data.len() + 1).unwrap();
         match self.find_last_available() {
-            Some(n) => self.data[n] = Cell::Nothing(Some(first_new_cell_indx)),
-            None => self.head = Some(first_new_cell_indx)
+            None => self.head = Some(head_indx),
+            Some(n) => self.data[n.get() - 1] = Cell::Nothing(Some(head_indx)),
         };
-        let new_cells = (first_new_cell_indx + 1..)
+        let new_cells = (head_indx.get()..)  // already bigger by 1
             .take(additional - 1)
-            .map(|i| Cell::Nothing(Some(i)))
+            .map(|i| Cell::Nothing(Some(NonZeroUsize::new(i + 1).unwrap())))
             .chain(std::iter::once(Cell::Nothing(None)));
         self.data.extend(new_cells);
     }
@@ -94,13 +95,14 @@ impl<T> Allocator<T> {
                 self.insert(data)
             },
             Some(index) => {
-                let next_head = match self.data.get(index) {
+                let i = index.get() - 1;  // zero-based index
+                let next_head = match self.data.get(i) {
                     Some(Cell::Just(_)) | None => panic!("corrupt arena"),
                     Some(Cell::Nothing(next_head)) => next_head
                 };
                 self.head = *next_head;
                 self.len += 1;
-                self.data[index] = Cell::Just(data);
+                self.data[i] = Cell::Just(data);
                 Token { index }
             }
         }
@@ -113,7 +115,7 @@ impl<T> Allocator<T> {
     }
 
     pub fn remove(&mut self, token: Token) -> Option<T> {
-        match self.data.get_mut(token.index) {
+        match self.data.get_mut(token.index.get() - 1) {  // zero-based index
             Some(Cell::Nothing(_)) | None => None,
             Some(mut cell) => {
                 let mut x = Cell::Nothing(self.head);
@@ -129,14 +131,14 @@ impl<T> Allocator<T> {
     }
 
     pub fn get(&self, token: Token) -> Option<&T> {
-        match self.data.get(token.index) {
+        match self.data.get(token.index.get() - 1) {  // zero-based index
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
         }
     }
 
     pub fn get_mut(&mut self, token: Token) -> Option<&mut T> {
-        match self.data.get_mut(token.index) {
+        match self.data.get_mut(token.index.get() - 1) {  // zero-based index
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
         }

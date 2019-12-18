@@ -1,6 +1,7 @@
 #![allow(clippy::match_bool)]
 use std::collections::VecDeque;
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 use crate::Error;
 use crate::iter::*;
@@ -8,9 +9,9 @@ use crate::node::Node;
 use crate::arena::Arena;
 
 /// A `Token` is a handle to a node in the arena.
-#[derive(Clone, Copy, Eq, PartialEq, Default, Debug, Hash)]
-pub struct Token{
-    pub (crate) index: usize
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Hash)]
+pub struct Token {
+    pub (crate) index: NonZeroUsize
 }
 
 impl Token {

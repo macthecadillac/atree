@@ -1,5 +1,6 @@
 #![allow(clippy::match_bool)]
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::ops::{Index, IndexMut};
 
 use crate::alloc::Allocator;
@@ -73,7 +74,7 @@ impl<T> Arena<T> {
             data,
             parent: None,
             previous_sibling: None,
-            token: Token::default(),
+            token: Token { index: NonZeroUsize::new(1).unwrap() },
             next_sibling: None,
             first_child: None
         };

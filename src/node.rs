@@ -11,7 +11,7 @@ use crate::iter::*;
 /// [`Token`]: struct.Token.html
 /// [`get`]: struct.Arena.html#method.get
 /// [`get_mut`]: struct.Arena.html#method.get_mut
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Node<T> {
     /// The `data` field.
     pub data: T,
