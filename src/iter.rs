@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::mem;
 
-use crate::Tree;
+use crate::Arena;
 use crate::node::Node;
 use crate::token::Token;
 
@@ -41,10 +41,10 @@ pub enum TraversalOrder {
 pub (crate) fn preorder_next<T>(mut node_token: Token,
                                 root: Token,
                                 mut branch: Branch,
-                                tree: &Tree<T>)
+                                arena: &Arena<T>)
     -> (Option<Token>, Branch) {
     loop {
-        let node = match tree.get(node_token) {
+        let node = match arena.get(node_token) {
             Some(n) => n,
             None => panic!("Invalid token")
         };
@@ -81,11 +81,11 @@ pub (crate) fn preorder_next<T>(mut node_token: Token,
 pub (crate) fn postorder_next<T>(mut node_token: Token,
                                  root: Token,
                                  mut branch: Branch,
-                                 tree: &Tree<T>)
+                                 arena: &Arena<T>)
     -> (Option<Token>, Branch) {
     let mut switch_branch = true;
     loop {
-        let node = match tree.get(node_token) {
+        let node = match arena.get(node_token) {
             Some(n) => n,
             None => panic!("Invalid token")
         };
@@ -131,19 +131,19 @@ pub (crate) fn postorder_next<T>(mut node_token: Token,
 #[allow(clippy::type_complexity)]
 pub (crate) fn depth_first_tokens_next<'a, T>(
     iter: &mut SubtreeTokens<'a, T>,
-    func: fn(Token, Token, Branch, &Tree<T>) -> (Option<Token>, Branch)
+    func: fn(Token, Token, Branch, &Arena<T>) -> (Option<Token>, Branch)
 ) -> Option<Token> {
     match iter.node_token {
         None => None,
-        Some(token) => match iter.tree.get(token) {
+        Some(token) => match iter.arena.get(token) {
             None => panic!("Stale token: {:?} is not found in \
-                            the tree. Check code", token),
+                            the arena. Check code", token),
             Some(_) => {
                 let (next_node, branch) = func(
                     token,
                     iter.subtree_root,
                     iter.branch,
-                    iter.tree
+                    iter.arena
                 );
                 iter.node_token = next_node;
                 iter.branch = branch;
@@ -162,7 +162,7 @@ pub (crate) fn breadth_first_tokens_next<'a, T> (iter: &mut SubtreeTokens<'a, T>
     -> Option<Token> {
     match iter.curr_level.pop_front() {
         Some(token) => {
-            iter.next_level.extend(token.children_tokens(iter.tree));
+            iter.next_level.extend(token.children_tokens(iter.arena));
             Some(token)
         },
         None => match iter.next_level.is_empty() {
@@ -183,7 +183,7 @@ pub (crate) fn breadth_first_tokens_next<'a, T> (iter: &mut SubtreeTokens<'a, T>
 /// [`Token`]: ../struct.Token.html#method.subtree_tokens
 /// [`Node`]: ../struct.Node.html#method.subtree_tokens
 pub struct SubtreeTokens<'a, T> {
-    pub (crate) tree: &'a Tree<T>,
+    pub (crate) arena: &'a Arena<T>,
     pub (crate) subtree_root: Token,
     pub (crate) node_token: Option<Token>,
     pub (crate) branch: Branch,
@@ -205,7 +205,7 @@ impl<'a, T> Iterator for SubtreeTokens<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.subtree
 /// [`Node`]: ../struct.Node.html#method.subtree
 pub struct Subtree<'a, T> {
-    pub (crate) tree: &'a Tree<T>,
+    pub (crate) arena: &'a Arena<T>,
     pub (crate) iter: SubtreeTokens<'a, T>
 }
 
@@ -213,7 +213,7 @@ impl<'a, T> Iterator for Subtree<'a, T> {
     type Item = &'a Node<T>;
     fn next(&mut self) -> Option<&'a Node<T>> {
         match self.iter.next() {
-            Some(node_token) => self.tree.get(node_token),
+            Some(node_token) => self.arena.get(node_token),
             None => None
         }
     }
@@ -226,7 +226,7 @@ impl<'a, T> Iterator for Subtree<'a, T> {
 ///
 /// [`subtree_mut`]: ../struct.Token.html#method.subtree_mut
 pub struct SubtreeMut<'a, T: 'a> {
-    pub (crate) tree: *mut Tree<T>,
+    pub (crate) arena: *mut Arena<T>,
     pub (crate) iter: SubtreeTokens<'a, T>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
@@ -237,8 +237,8 @@ impl<'a, T> Iterator for SubtreeMut<'a, T> {
         match self.iter.next() {
             None => None,
             Some(node_token) => {
-                let tree = unsafe { self.tree.as_mut().unwrap() };
-                match tree.get_mut(node_token) {
+                let arena = unsafe { self.arena.as_mut().unwrap() };
+                match arena.get_mut(node_token) {
                     Some(node) => Some(node),
                     None => None
                 }
@@ -255,7 +255,7 @@ impl<'a, T> Iterator for SubtreeMut<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.following_siblings_tokens
 /// [`Node`]: ../struct.Node.html#method.following_siblings_tokens
 pub struct FollowingSiblingTokens<'a, T> {
-    pub (crate) tree: &'a Tree<T>,
+    pub (crate) arena: &'a Arena<T>,
     pub (crate) node_token: Option<Token>
 }
 
@@ -267,7 +267,7 @@ pub struct FollowingSiblingTokens<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.preceding_siblings_tokens
 /// [`Node`]: ../struct.Node.html#method.preceding_siblings_tokens
 pub struct PrecedingSiblingTokens<'a, T> {
-    pub (crate) tree: &'a Tree<T>,
+    pub (crate) arena: &'a Arena<T>,
     pub (crate) node_token: Option<Token>
 }
 
@@ -279,7 +279,7 @@ pub struct PrecedingSiblingTokens<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.children_tokens
 /// [`Node`]: ../struct.Node.html#method.children_tokens
 pub struct ChildrenTokens<'a, T> {
-    pub (crate) tree: &'a Tree<T>,
+    pub (crate) arena: &'a Arena<T>,
     pub (crate) node_token: Option<Token>
 }
 
@@ -291,7 +291,7 @@ pub struct ChildrenTokens<'a, T> {
 /// [`Token`]: ../struct.Token.html#method.ancestors_tokens
 /// [`Node`]: ../struct.Node.html#method.ancestors_tokens
 pub struct AncestorTokens<'a, T> {
-    pub (crate) tree: &'a Tree<T>,
+    pub (crate) arena: &'a Arena<T>,
     pub (crate) node_token: Option<Token>
 }
 
@@ -346,7 +346,7 @@ pub struct Ancestors<'a, T> {
 ///
 /// [`preceding_siblings_mut`]: ../struct.Token.html#method.preceding_siblings_mut
 pub struct PrecedingSiblingsMut<'a, T: 'a> {
-    pub (crate) tree: *mut Tree<T>,
+    pub (crate) arena: *mut Arena<T>,
     pub (crate) node_token: Option<Token>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
@@ -358,7 +358,7 @@ pub struct PrecedingSiblingsMut<'a, T: 'a> {
 ///
 /// [`following_siblings_mut`]: ../struct.Token.html#method.following_siblings_mut
 pub struct FollowingSiblingsMut<'a, T: 'a> {
-    pub (crate) tree: *mut Tree<T>,
+    pub (crate) arena: *mut Arena<T>,
     pub (crate) node_token: Option<Token>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
@@ -370,7 +370,7 @@ pub struct FollowingSiblingsMut<'a, T: 'a> {
 ///
 /// [`children_mut`]: ../struct.Token.html#method.children_mut
 pub struct ChildrenMut<'a, T: 'a> {
-    pub (crate) tree: *mut Tree<T>,
+    pub (crate) arena: *mut Arena<T>,
     pub (crate) node_token: Option<Token>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
@@ -382,7 +382,7 @@ pub struct ChildrenMut<'a, T: 'a> {
 ///
 /// [`ancestors_mut`]: ../struct.Token.html#method.ancestors_mut
 pub struct AncestorsMut<'a, T: 'a> {
-    pub (crate) tree: *mut Tree<T>,
+    pub (crate) arena: *mut Arena<T>,
     pub (crate) node_token: Option<Token>,
     pub (crate) marker: PhantomData<&'a mut T>
 }
@@ -396,9 +396,9 @@ macro_rules! iterator {
             fn next(&mut self) -> Option<Token> {
                 match self.node_token {
                     None => None,
-                    Some(token) => match self.tree.get(token) {
+                    Some(token) => match self.arena.get(token) {
                         None => panic!("Stale token: {:?} is not found in \
-                                        the tree. Check code", token),
+                                        the arena. Check code", token),
                         Some(curr_node) => {
                             self.node_token = curr_node.$field;
                             Some(token)
@@ -410,14 +410,14 @@ macro_rules! iterator {
     };
 
     // perhaps fold this into the @token branch since this can be implemented with
-    // largely the same code with one less Tree::get (one less look-up should
+    // largely the same code with one less Arena::get (one less look-up should
     // translate to more performant code)
     (@node struct $name:ident) => {
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = &'a Node<T>;
             fn next(&mut self) -> Option<&'a Node<T>> {
                 match self.token_iter.next() {
-                    Some(node_token) => self.token_iter.tree.get(node_token),
+                    Some(node_token) => self.token_iter.arena.get(node_token),
                     None => None
                 }
             }
@@ -431,8 +431,8 @@ macro_rules! iterator {
                 match self.node_token {
                     None => None,
                     Some(curr_node_token) => {
-                        let tree = unsafe { self.tree.as_mut().unwrap() };
-                        match tree.get_mut(curr_node_token) {
+                        let arena = unsafe { self.arena.as_mut().unwrap() };
+                        match arena.get_mut(curr_node_token) {
                             None => None,
                             Some(curr_node) => {
                                 self.node_token = curr_node.$field;

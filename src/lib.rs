@@ -12,42 +12,42 @@
 //!
 //! # Quick Start
 //!
-//! The crate consists of three main `struct`s: [`Tree<T>`], [`Token`] and
-//! [`Node<T>`]. `Tree<T>` provides the arena in which all data is stored.
-//! The data can then be accessed by indexing `Tree<T>` with `Token`. `Node<T>`
+//! The crate consists of three main `struct`s: [`Arena<T>`], [`Token`] and
+//! [`Node<T>`]. `Arena<T>` provides the arena in which all data is stored.
+//! The data can then be accessed by indexing `Arena<T>` with `Token`. `Node<T>`
 //! is a container that encapsulates the data on the tree.
 //!
 //! We can start by initializing an empty arena and add stuff to it at a later
 //! time:
 //! ```
-//! use atree::Tree;
+//! use atree::Arena;
 //!
-//! let mut tree = Tree::default();
-//! assert!(tree.is_empty());
+//! let mut arena = Arena::default();
+//! assert!(arena.is_empty());
 //!
 //! // add stuff to the arena when we feel like it
 //! let root_data = "Indo-European";
-//! let root_node_token = tree.new_node(root_data);
-//! assert_eq!(tree.node_count(), 1)
+//! let root_node_token = arena.new_node(root_data);
+//! assert_eq!(arena.node_count(), 1)
 //! ```
 //!
 //! Another way is to directly initialize an arena with a node:
 //! ```
-//! use atree::Tree;
+//! use atree::Arena;
 //!
 //! let root_data = "Indo-European";
-//! let (mut tree, root_token) = Tree::with_data(root_data);
-//! assert_eq!(tree.node_count(), 1)
+//! let (mut arena, root_token) = Arena::with_data(root_data);
+//! assert_eq!(arena.node_count(), 1)
 //! ```
 //!
 //! To add more data to the tree, call the [`append`] method on the tokens (we
 //! can't do this directly to the nodes because of the limitations of borrow
 //! checking).
 //! ```
-//! use atree::Tree;
+//! use atree::Arena;
 //!
 //! let root_data = "Indo-European";
-//! let (mut arena, root_token) = Tree::with_data(root_data);
+//! let (mut arena, root_token) = Arena::with_data(root_data);
 //! root_token.append(&mut arena, "Romance");
 //! assert_eq!(arena.node_count(), 2);
 //! ```
@@ -55,10 +55,10 @@
 //! To access/modify existing nodes in the tree, we can use indexing or
 //! [`get`]/[`get_mut`].
 //! ```
-//! use atree::Tree;
+//! use atree::Arena;
 //!
 //! let root_data = "Indo-European";
-//! let (mut arena, root_token) = Tree::with_data(root_data);
+//! let (mut arena, root_token) = Arena::with_data(root_data);
 //!
 //! // add some more stuff to the tree
 //! let branch1 = root_token.append(&mut arena, "Romance");
@@ -92,10 +92,10 @@
 //! of iterators. There is a version of each of the iterators that iterates
 //! over tokens instead of node references. See the docs for details.
 //! ```
-//! use atree::Tree;
+//! use atree::Arena;
 //!
 //! let root_data = "Indo-European";
-//! let (mut arena, root_token) = Tree::with_data(root_data);
+//! let (mut arena, root_token) = Arena::with_data(root_data);
 //!
 //! // add some more stuff to the tree
 //! let branch1 = root_token.append(&mut arena, "Romance");
@@ -130,10 +130,10 @@
 //! Note that will also remove all descendants of the node. After removal, the
 //! "freed" memory will be reused if and when new data is inserted.
 //! ```
-//! use atree::Tree;
+//! use atree::Arena;
 //!
 //! let root_data = "Indo-European";
-//! let (mut arena, root_token) = Tree::with_data(root_data);
+//! let (mut arena, root_token) = Arena::with_data(root_data);
 //!
 //! // add some more stuff to the tree
 //! let branch1 = root_token.append(&mut arena, "Romance");
@@ -148,23 +148,23 @@
 //! assert_eq!(arena.node_count(), 4);
 //! ```
 //!
-//! [`Tree<T>`]: struct.Tree.html
+//! [`Arena<T>`]: struct.Arena.html
 //! [`Token`]: struct.Token.html
 //! [`Node<T>`]: struct.Node.html
 //! [`append`]: struct.Token.html#method.append
-//! [`get`]: struct.Tree.html#method.get
-//! [`get_mut`]: struct.Tree.html#method.get_mut
-//! [`remove`]: struct.Tree.html#method.remove
+//! [`get`]: struct.Arena.html#method.get
+//! [`get_mut`]: struct.Arena.html#method.get_mut
+//! [`remove`]: struct.Arena.html#method.remove
 // TODO: use NonZeroUsize instead of usize in Token
 
+mod alloc;
 mod arena;
 pub mod iter;
 mod node;
 mod token;
-mod tree;
 
 pub use token::Token;
-pub use tree::Tree;
+pub use arena::Arena;
 pub use node::Node;
 
 #[derive(Clone, Copy, Debug)]

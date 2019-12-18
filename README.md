@@ -8,62 +8,61 @@ implemented on top of `Vec` and as such eliminates the need for the countless
 heap allocations or unsafe code that a pointer based tree structure would
 require. This approach also makes parallel access feasible.  On top of the basic
 node insertion and removal operations, care is taken to provide various
-functions which enable splitting, merging, and numerous kinds of immutable and
-mutable iterations over the nodes.
+functions which enable splitting, merging, and also numerous kinds of immutable
+and mutable iterations over the nodes.
 
 Most of the code in the crate is `unsafe` free, except for the mutable
-iterators, where the `unsafe` code is lifted from the core Rust
-implementation of `IterMut`.
+iterators, where the `unsafe` code is lifted from the core Rust implementation
+of `IterMut`.
 
-## Quick Start
+# Quick Start
 
-The crate consists of three main `struct`s: `Tree<T>`, `Token` and
-`Node<T>`. `Tree<T>` provides the arena in which all data is stored.
-The data can then be accessed by indexing `Tree<T>` with `Token`. `Node<T>`
-is a container that encapsulates the data on the tree.
+The crate consists of three main `struct`s: [`Arena<T>`], [`Token`] and
+[`Node<T>`]. `Arena<T>` provides the arena in which all data is stored.  The
+data can then be accessed by indexing `Arena<T>` with `Token`. `Node<T>` is a
+container that encapsulates the data on the tree.
 
 We can start by initializing an empty arena and add stuff to it at a later
 time:
-```rust
-use atree::Tree;
+```
+use atree::Arena;
 
-let mut tree = Tree::default();
-assert!(tree.is_empty());
+let mut arena = Arena::default();
+assert!(arena.is_empty());
 
 // add stuff to the arena when we feel like it
 let root_data = "Indo-European";
-let root_node_token = tree.initialize(root_data);
-assert_eq!(tree.node_count(), 1)
+let root_node_token = arena.new_node(root_data);
+assert_eq!(arena.node_count(), 1)
 ```
 
 Another way is to directly initialize an arena with a node:
-```rust
-use atree::Tree;
+```
+use atree::Arena;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_data(root_data);
-assert_eq!(tree.node_count(), 1)
+let (mut arena, root_token) = Arena::with_data(root_data);
+assert_eq!(arena.node_count(), 1)
 ```
 
-To add more data to the tree, call the `append` method on the tokens (we
-can't do this directly to the nodes because of the limitations of borrow
-checking).
-```rust
-use atree::Tree;
+To add more data to the tree, call the [`append`] method on the tokens (we can't
+do this directly to the nodes because of the limitations of borrow checking).
+```
+use atree::Arena;
 
 let root_data = "Indo-European";
-let (mut tree, root_token) = Tree::with_data(root_data);
-root_token.append(&mut tree, "Romance");
-assert_eq!(tree.node_count(), 2);
+let (mut arena, root_token) = Arena::with_data(root_data);
+root_token.append(&mut arena, "Romance");
+assert_eq!(arena.node_count(), 2);
 ```
 
 To access/modify existing nodes in the tree, we can use indexing or
-`get`/`get_mut`.
-```rust
-use atree::Tree;
+[`get`]/[`get_mut`].
+```
+use atree::Arena;
 
 let root_data = "Indo-European";
-let (mut arena, root_token) = Tree::with_data(root_data);
+let (mut arena, root_token) = Arena::with_data(root_data);
 
 // add some more stuff to the tree
 let branch1 = root_token.append(&mut arena, "Romance");
@@ -92,15 +91,15 @@ let branch3_node = &arena[branch3];
 assert_eq!(branch3, branch3_node.token());
 ```
 
-We can iterate over the elements by calling iterators on both the tokens
-or the nodes. Check the documentation of `Token` or `Node<T>` for a list
-of iterators. There is a version of each of the iterators that iterates
-over tokens instead of node references. See the docs for details.
-```rust
-use atree::Tree;
+We can iterate over the elements by calling iterators on both the tokens or the
+nodes. Check the documentation of [`Token`] or [`Node<T>`] for a list of
+iterators. There is a version of each of the iterators that iterates over tokens
+instead of node references. See the docs for details.
+```
+use atree::Arena;
 
 let root_data = "Indo-European";
-let (mut arena, root_token) = Tree::with_data(root_data);
+let (mut arena, root_token) = Arena::with_data(root_data);
 
 // add some more stuff to the tree
 let branch1 = root_token.append(&mut arena, "Romance");
@@ -127,19 +126,18 @@ assert_eq!(&["Slavic", "Indo-European"], &ancestors[..]);
 for lang in branch2.children_mut(&mut arena) {
     lang.data = "Not romantic enough";
 }
-assert_eq!(tree[lang1].data, "Not romantic enough");
-assert_eq!(tree[lang2].data, "Not romantic enough");
+assert_eq!(arena[lang1].data, "Not romantic enough");
+assert_eq!(arena[lang2].data, "Not romantic enough");
 ```
 
-To remove a node from the arena, call the `remove` method on the arena. Note
+To remove a node from the arena, call the [`remove`] method on the arena.  Note
 that will also remove all descendants of the node. After removal, the "freed"
 memory will be reused if and when new data is inserted.
-
-```rust
-use atree::Tree;
+```
+use atree::Arena;
 
 let root_data = "Indo-European";
-let (mut arena, root_token) = Tree::with_data(root_data);
+let (mut arena, root_token) = Arena::with_data(root_data);
 
 // add some more stuff to the tree
 let branch1 = root_token.append(&mut arena, "Romance");
@@ -150,7 +148,7 @@ let lang2 = branch2.append(&mut arena, "Swedish");
 let lang3 = branch3.append(&mut arena, "Polish");
 
 assert_eq!(arena.node_count(), 7);
-arena.remove(branch2);  // boring languages anyway
+arena.uproot(branch2);  // boring languages anyway
 assert_eq!(arena.node_count(), 4);
 ```
 
