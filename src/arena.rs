@@ -14,6 +14,9 @@ pub struct Arena<T> {
 }
 
 impl<T> Arena<T> {
+    /// Initializes a new `Arena<T>`.
+    pub fn new() -> Self { Arena { allocator: Allocator::new() } }
+
     /// Returns true if the arena is empty.
     ///
     /// # Examples:

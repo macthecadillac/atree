@@ -29,6 +29,14 @@ impl<T> Default for Allocator<T> {
 }
 
 impl<T> Allocator<T> {
+    pub fn new() -> Self {
+        Allocator {
+            data: vec![Cell::Nothing(None)],
+            head: Some(0),
+            len: 0
+        }
+    }
+
     pub fn head(&mut self) -> Token {
         match self.head {
             Some(head) => Token{ index: head },
@@ -44,10 +52,6 @@ impl<T> Allocator<T> {
     pub fn is_empty(&self) -> bool { self.len == 0 }
 
     pub fn capacity(&self) -> usize { self.data.len() }
-
-    pub fn new() -> Self {
-        Allocator { data: Vec::new(), head: None, len: 0 }
-    }
 
     pub fn is_valid_token(&self, token: Token) -> bool {
         self.get(token).is_some()
