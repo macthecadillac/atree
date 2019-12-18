@@ -126,7 +126,41 @@
 //! assert_eq!(arena[lang2].data, "Not romantic enough");
 //! ```
 //!
-//! To remove a node from the arena, call the [`remove`] method on the arena.
+//! To remove a single node from the arena, use the [`remove`] method. This will
+//! detach all the children of the node from the tree (but not remove them from
+//! memory).
+//! ```
+//! use atree::Arena;
+//! use atree::iter::TraversalOrder;
+//!
+//! // root node that we will attach subtrees to
+//! let root_data = "Indo-European";
+//! let (mut arena, root) = Arena::with_data(root_data);
+//!
+//! // the Germanic branch
+//! let germanic = root.append(&mut arena, "Germanic");
+//! let west = germanic.append(&mut arena, "West");
+//! let scotts = west.append(&mut arena, "Scotts");
+//! let english = west.append(&mut arena, "English");
+//!
+//! // detach the west branch from the main tree
+//! let west_children = arena.remove(west);
+//!
+//! // the west branch is gone from the original tree
+//! let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+//!     .map(|x| x.data);
+//! assert_eq!(iter.next(), Some("Indo-European"));
+//! assert_eq!(iter.next(), Some("Germanic"));
+//! assert!(iter.next().is_none());
+//!
+//! // its children are still areound
+//! let mut iter = west_children.iter().map(|&t| arena[t].data);
+//! assert_eq!(iter.next(), Some("Scotts"));
+//! assert_eq!(iter.next(), Some("English"));
+//! assert!(iter.next().is_none());
+//! ```
+//!
+//! To uproot a tree from the arena, call the [`uproot`] method on the arena.
 //! Note that will also remove all descendants of the node. After removal, the
 //! "freed" memory will be reused if and when new data is inserted.
 //! ```
@@ -154,6 +188,7 @@
 //! [`append`]: struct.Token.html#method.append
 //! [`get`]: struct.Arena.html#method.get
 //! [`get_mut`]: struct.Arena.html#method.get_mut
+//! [`uproot`]: struct.Arena.html#method.uproot
 //! [`remove`]: struct.Arena.html#method.remove
 // TODO: use NonZeroUsize instead of usize in Token
 

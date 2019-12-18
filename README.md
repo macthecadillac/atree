@@ -17,8 +17,8 @@ of `IterMut`.
 
 # Quick Start
 
-The crate consists of three main `struct`s: [`Arena<T>`], [`Token`] and
-[`Node<T>`]. `Arena<T>` provides the arena in which all data is stored.  The
+The crate consists of three main `struct`s: `Arena<T>`, `Token` and
+`Node<T>`. `Arena<T>` provides the arena in which all data is stored.  The
 data can then be accessed by indexing `Arena<T>` with `Token`. `Node<T>` is a
 container that encapsulates the data on the tree.
 
@@ -45,7 +45,7 @@ let (mut arena, root_token) = Arena::with_data(root_data);
 assert_eq!(arena.node_count(), 1)
 ```
 
-To add more data to the tree, call the [`append`] method on the tokens (we can't
+To add more data to the tree, call the `append` method on the tokens (we can't
 do this directly to the nodes because of the limitations of borrow checking).
 ```
 use atree::Arena;
@@ -57,7 +57,7 @@ assert_eq!(arena.node_count(), 2);
 ```
 
 To access/modify existing nodes in the tree, we can use indexing or
-[`get`]/[`get_mut`].
+`get`/`get_mut`.
 ```
 use atree::Arena;
 
@@ -92,7 +92,7 @@ assert_eq!(branch3, branch3_node.token());
 ```
 
 We can iterate over the elements by calling iterators on both the tokens or the
-nodes. Check the documentation of [`Token`] or [`Node<T>`] for a list of
+nodes. Check the documentation of `Token` or `Node<T>` for a list of
 iterators. There is a version of each of the iterators that iterates over tokens
 instead of node references. See the docs for details.
 ```
@@ -130,9 +130,43 @@ assert_eq!(arena[lang1].data, "Not romantic enough");
 assert_eq!(arena[lang2].data, "Not romantic enough");
 ```
 
-To remove a node from the arena, call the [`remove`] method on the arena.  Note
-that will also remove all descendants of the node. After removal, the "freed"
-memory will be reused if and when new data is inserted.
+To remove a single node from the arena, use the `remove` method. This will
+detach all the children of the node from the tree (but not remove them from
+memory).
+```
+use atree::Arena;
+use atree::iter::TraversalOrder;
+
+// root node that we will attach subtrees to
+let root_data = "Indo-European";
+let (mut arena, root) = Arena::with_data(root_data);
+
+// the Germanic branch
+let germanic = root.append(&mut arena, "Germanic");
+let west = germanic.append(&mut arena, "West");
+let scotts = west.append(&mut arena, "Scotts");
+let english = west.append(&mut arena, "English");
+
+// detach the west branch from the main tree
+let west_children = arena.remove(west);
+
+// the west branch is gone from the original tree
+let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    .map(|x| x.data);
+assert_eq!(iter.next(), Some("Indo-European"));
+assert_eq!(iter.next(), Some("Germanic"));
+assert!(iter.next().is_none());
+
+// its children are still areound
+let mut iter = west_children.iter().map(|&t| arena[t].data);
+assert_eq!(iter.next(), Some("Scotts"));
+assert_eq!(iter.next(), Some("English"));
+assert!(iter.next().is_none());
+```
+
+To uproot a tree from the arena, call the `uproot` method on the arena.
+Note that will also remove all descendants of the node. After removal, the
+"freed" memory will be reused if and when new data is inserted.
 ```
 use atree::Arena;
 
@@ -150,7 +184,6 @@ let lang3 = branch3.append(&mut arena, "Polish");
 assert_eq!(arena.node_count(), 7);
 arena.uproot(branch2);  // boring languages anyway
 assert_eq!(arena.node_count(), 4);
-```
 
 ## License
 
