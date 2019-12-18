@@ -90,8 +90,7 @@ impl<T> Allocator<T> {
     pub fn insert(&mut self, data: T) -> Token {
         match self.head {
             None => {
-                // TODO: thik of a better way to do this
-                self.reserve(if self.len == 0 { 10 } else { self.len });
+                self.reserve(self.capacity());
                 self.insert(data)
             },
             Some(index) => {
