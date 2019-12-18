@@ -2,6 +2,7 @@
 use std::collections::VecDeque;
 use std::marker::PhantomData;
 
+use crate::Error;
 use crate::iter::*;
 use crate::node::Node;
 use crate::tree::Tree;
@@ -40,10 +41,9 @@ impl Token {
         let new_node_token = tree.arena.head();
         let previous_sibling = match self.children_mut(tree).last() {
             None => {
-                match tree.get_mut(self) {
-                    None => panic!("Invalid token"),
-                    Some(curr_node) => curr_node.first_child = Some(new_node_token)
-                }
+                // children_mut will have checked indexability so this will not
+                // fail
+                tree[self].first_child = Some(new_node_token);
                 None
             },
             Some(last_child) => {
@@ -192,6 +192,164 @@ impl Token {
         };
         tree.set(new_node_token, node);
         new_node_token
+    }
+
+    /// Attaches a different tree in the arena to a node. Returns error if the
+    /// "root node" of the other tree is not really a root node (as in it
+    /// already has a parent and/or siblings). To attach a tree from a different
+    /// arena, use [`copy_and_append_subtree`] instead.
+    ///
+    /// **Note**: for performance reasons, this operation does not check whether
+    /// the "self" node is in fact a descendant of the other tree. A cyclic
+    /// graph may result.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    ///
+    /// # Examples:
+    /// ```
+    /// use atree::Tree;
+    /// use atree::iter::TraversalOrder;
+    ///
+    /// // root node that we will attach subtrees to
+    /// let root_data = "Indo-European";
+    /// let (mut arena, root) = Tree::with_data(root_data);
+    ///
+    /// // the Germanic branch
+    /// let germanic = arena.new_node("Germanic");
+    /// let west = germanic.append(&mut arena, "West");
+    /// let scotts = west.append(&mut arena, "Scotts");
+    /// let english = west.append(&mut arena, "English");
+    ///
+    /// // the Romance branch
+    /// let romance = arena.new_node("Romance");
+    /// let french = romance.append(&mut arena, "French");
+    /// let italian = romance.append(&mut arena, "Italian");
+    ///
+    /// // attach subtrees
+    /// root.append_tree(&mut arena, romance).unwrap();
+    /// root.append_tree(&mut arena, germanic).unwrap();
+    ///
+    /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Indo-European"));
+    /// assert_eq!(iter.next(), Some("Romance"));
+    /// assert_eq!(iter.next(), Some("French"));
+    /// assert_eq!(iter.next(), Some("Italian"));
+    /// assert_eq!(iter.next(), Some("Germanic"));
+    /// assert_eq!(iter.next(), Some("West"));
+    /// assert_eq!(iter.next(), Some("Scotts"));
+    /// assert_eq!(iter.next(), Some("English"));
+    /// assert!(iter.next().is_none())
+    /// ```
+    ///
+    /// [`copy_and_append_subtree`]: struct.Tree.html#method.copy_and_append_subtree
+    pub fn append_tree<T>(self, arena: &mut Tree<T>, other_tree_root: Self)
+        -> Result<(), Error> {
+        // check that the other node is really a root node of its own
+        match arena.get(other_tree_root) {
+            None => panic!("Invalid token"),
+            Some(node) => match (node.previous_sibling, node.next_sibling, node.parent) {
+                (None, None, None) => (),
+                _ => return Err(Error::NotAFreeNode)
+            }
+        }
+
+        let previous_sibling = match self.children_mut(arena).last() {
+            None => {
+                // children_mut will have checked indexability so this will not
+                // fail
+                arena[self].first_child = Some(other_tree_root);
+                None
+            },
+            Some(last_child) => {
+                last_child.next_sibling = Some(other_tree_root);
+                Some(last_child.token)
+            }
+        };
+
+        // children_mut will have checked indexability so this will not fail
+        arena[other_tree_root].previous_sibling = previous_sibling;
+        Ok(())
+    }
+
+    /// Detaches the given node and its descendants into its own tree while
+    /// remaining in the same arena. To detach and allocate the subtree into its
+    /// own arena, use [`split_at`] instead.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    ///
+    /// # Examples:
+    /// ```
+    /// use atree::Tree;
+    /// use atree::iter::TraversalOrder;
+    ///
+    /// // root node that we will attach subtrees to
+    /// let root_data = "Indo-European";
+    /// let (mut arena, root) = Tree::with_data(root_data);
+    ///
+    /// // the Germanic branch
+    /// let germanic = root.append(&mut arena, "Germanic");
+    /// let west = germanic.append(&mut arena, "West");
+    /// let scotts = west.append(&mut arena, "Scotts");
+    /// let english = west.append(&mut arena, "English");
+    ///
+    /// // detach the west branch from the main tree
+    /// west.detach(&mut arena);
+    ///
+    /// // the west branch is gone from the original tree
+    /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Indo-European"));
+    /// assert_eq!(iter.next(), Some("Germanic"));
+    /// assert!(iter.next().is_none());
+    ///
+    /// // it exists on its own
+    /// let mut iter = west.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("West"));
+    /// assert_eq!(iter.next(), Some("Scotts"));
+    /// assert_eq!(iter.next(), Some("English"));
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// [`split_at`]: struct.Tree.html#method.split_at
+    pub fn detach<T>(self, arena: &mut Tree<T>) {
+        let (parent, previous_sibling, next_sibling) = match arena.get_mut(self) {
+            None => panic!("Invalid token"),
+            Some(node) => {
+                let parent = node.parent;
+                let previous_sibling = node.previous_sibling;
+                let next_sibling = node.next_sibling;
+                node.parent = None;
+                node.previous_sibling = None;
+                node.next_sibling = None;
+                (parent, previous_sibling, next_sibling)
+            }
+        };
+
+        match previous_sibling {
+            Some(token) => match arena.get_mut(token) {
+                None => panic!("Corrupt tree"),
+                Some(node) => node.next_sibling = next_sibling
+            },
+            None => if let Some(token) = parent {
+                match arena.get_mut(token) {
+                    None => panic!("Corrupt tree"),
+                    Some(n) => n.first_child = next_sibling
+                }
+            }
+        }
+
+        if let Some(token) = next_sibling {
+            match arena.get_mut(token) {
+                None => panic!("Corrupt tree"),
+                Some(node) => node.previous_sibling = previous_sibling
+            }
+        }
     }
 
     /// Returns an iterator of tokens of ancestor nodes.

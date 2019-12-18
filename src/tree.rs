@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
 use crate::arena::Arena;
-use crate::iter::Branch;
+use crate::iter::{Branch, ChildrenTokens};
 use crate::node::Node;
 use crate::token::Token;
 
@@ -157,7 +157,7 @@ impl<T> Tree<T> {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the arena.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -184,11 +184,68 @@ impl<T> Tree<T> {
         }
     }
 
-    /// Removes the given node along with all its descendants.
+    /// Removes the given node from the arena and returns the tokens of its
+    /// children. Use [`uproot`] instead if you no longer need the descendants
+    /// of the node such that the freed memory could be reused.
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    ///
+    /// # Examples:
+    /// ```
+    /// use atree::Tree;
+    /// use atree::iter::TraversalOrder;
+    ///
+    /// // root node that we will attach subtrees to
+    /// let root_data = "Indo-European";
+    /// let (mut arena, root) = Tree::with_data(root_data);
+    ///
+    /// // the Germanic branch
+    /// let germanic = root.append(&mut arena, "Germanic");
+    /// let west = germanic.append(&mut arena, "West");
+    /// let scotts = west.append(&mut arena, "Scotts");
+    /// let english = west.append(&mut arena, "English");
+    ///
+    /// // detach the west branch from the main tree
+    /// let west_children = arena.remove(west);
+    ///
+    /// // the west branch is gone from the original tree
+    /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Indo-European"));
+    /// assert_eq!(iter.next(), Some("Germanic"));
+    /// assert!(iter.next().is_none());
+    ///
+    /// // its children are still areound
+    /// let mut iter = west_children.iter().map(|&t| arena[t].data);
+    /// assert_eq!(iter.next(), Some("Scotts"));
+    /// assert_eq!(iter.next(), Some("English"));
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// [`uproot`]: struct.Tree.html#method.uproot
+    // cannot return an iterator since we need to drop the mutable borrow
+    pub fn remove(&mut self, token: Token) -> Vec<Token> {
+        token.detach(self);
+        // The chidlren will remain siblings. Change in the future if this leads
+        // to problems.
+        for child in token.children_mut(self) {
+            child.parent = None;
+        }
+        // should not fail because children_mut checks the validity of token
+        let first_child = self[token].first_child;
+        self.arena.remove(token);
+        let iter = ChildrenTokens { tree: self, node_token: first_child };
+        iter.collect()
+    }
+
+    /// Removes the given node along with all its descendants. If you only
+    /// wanted to remove the node while keeping its children, use [`remove`]
+    /// instead.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the arena.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     ///
@@ -203,13 +260,15 @@ impl<T> Tree<T> {
     /// let nnext_node1 = next_node.append(&mut arena, 3usize);
     /// let nnext_node2 = next_node.append(&mut arena, 4usize);
     /// 
-    /// arena.remove(next_node);
+    /// arena.uproot(next_node);
     /// let mut iter = root_token.subtree_tokens(&arena, TraversalOrder::Pre);
     /// assert_eq!(iter.next(), Some(root_token));
     /// assert!(iter.next().is_none());
     /// assert_eq!(arena.node_count(), 1);  // only the root node is left
     /// ```
-    pub fn remove(&mut self, token: Token) {
+    ///
+    /// [`remove`]: struct.Tree.html#method.remove
+    pub fn uproot(&mut self, token: Token) {
         token.remove_descendants(self);
         match self.arena.remove(token) {
             None => panic!("Invalid token"),
@@ -247,11 +306,13 @@ impl<T> Tree<T> {
 }
 
 impl<T> Tree<T> where T: Clone {
-    /// Moves subtree with the root at the given node into its own arena.
+    /// Moves subtree with the root at the given node into its own arena. To
+    /// detach a given subtree root node from a tree into its own while
+    /// remaining in the same arena, use [`detach`] instead.
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the arena.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     /// ```
@@ -277,6 +338,8 @@ impl<T> Tree<T> where T: Clone {
     /// assert_eq!(&["a0", "a1", "a2"], &arena1_elt[..]);
     /// assert_eq!(&["b1", "b2"], &arena2_elt[..]);
     /// ```
+    ///
+    /// [`detach`]: struct.Token.html#method.detach
     // TODO: could probably be optimized
     pub fn split_at(&mut self, token: Token) -> (Self, Token) where T: Clone {
         let root_data = match self.get(token) {
@@ -287,7 +350,7 @@ impl<T> Tree<T> where T: Clone {
         for child_token in token.children_tokens(&self) {
             arena.copy_and_append_subtree(root, self, child_token);
         }
-        self.remove(token);
+        self.uproot(token);
         (arena, root)
     }
 
@@ -297,7 +360,7 @@ impl<T> Tree<T> where T: Clone {
     ///
     /// # Panics:
     ///
-    /// Panics if the token does not correspond to a node on the arena.
+    /// Panics if the token does not correspond to a node in the arena.
     ///
     /// # Examples:
     /// ```

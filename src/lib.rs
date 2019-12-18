@@ -144,7 +144,7 @@
 //! let lang3 = branch3.append(&mut arena, "Polish");
 //!
 //! assert_eq!(arena.node_count(), 7);
-//! arena.remove(branch2);  // boring languages anyway
+//! arena.uproot(branch2);  // boring languages anyway
 //! assert_eq!(arena.node_count(), 4);
 //! ```
 //!
@@ -166,3 +166,6 @@ mod tree;
 pub use token::Token;
 pub use tree::Tree;
 pub use node::Node;
+
+#[derive(Clone, Copy, Debug)]
+pub enum Error { NotAFreeNode }
