@@ -232,7 +232,7 @@ impl Token {
     /// // the Germanic branch
     /// let germanic = arena.new_node("Germanic");
     /// let west = germanic.append(&mut arena, "West");
-    /// let scotts = west.append(&mut arena, "Scotts");
+    /// let scots = west.append(&mut arena, "Scots");
     /// let english = west.append(&mut arena, "English");
     ///
     /// // the Romance branch
@@ -252,7 +252,7 @@ impl Token {
     /// assert_eq!(iter.next(), Some("Italian"));
     /// assert_eq!(iter.next(), Some("Germanic"));
     /// assert_eq!(iter.next(), Some("West"));
-    /// assert_eq!(iter.next(), Some("Scotts"));
+    /// assert_eq!(iter.next(), Some("Scots"));
     /// assert_eq!(iter.next(), Some("English"));
     /// assert!(iter.next().is_none())
     /// ```
@@ -269,6 +269,7 @@ impl Token {
             }
         }
 
+        // update previous_sibling, next_sibling and parent
         let previous_sibling = match self.children_mut(arena).last() {
             None => {
                 // children_mut will have checked indexability so this will not
@@ -307,7 +308,7 @@ impl Token {
     /// // the Germanic branch
     /// let germanic = root.append(&mut arena, "Germanic");
     /// let west = germanic.append(&mut arena, "West");
-    /// let scotts = west.append(&mut arena, "Scotts");
+    /// let scots = west.append(&mut arena, "Scots");
     /// let english = west.append(&mut arena, "English");
     ///
     /// // detach the west branch from the main tree
@@ -324,7 +325,7 @@ impl Token {
     /// let mut iter = west.subtree(&arena, TraversalOrder::Pre)
     ///     .map(|x| x.data);
     /// assert_eq!(iter.next(), Some("West"));
-    /// assert_eq!(iter.next(), Some("Scotts"));
+    /// assert_eq!(iter.next(), Some("Scots"));
     /// assert_eq!(iter.next(), Some("English"));
     /// assert!(iter.next().is_none());
     /// ```
@@ -363,6 +364,113 @@ impl Token {
                 Some(node) => node.previous_sibling = previous_sibling
             }
         }
+    }
+
+    /// Replace the subtree of self with the subtree of other. Does not remove
+    /// self or its descendants but simply making it a standalone tree.
+    ///
+    /// **Note**: for performance reasons, this operation does not check whether
+    /// the "other" node is in fact a descendant of the parent tree of self. A
+    /// cyclic graph may result.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    ///
+    /// # Examples:
+    /// ```
+    /// use atree::Arena;
+    /// use atree::iter::TraversalOrder;
+    ///
+    /// // root node that we will attach subtrees to
+    /// let root_data = "Indo-European";
+    /// let (mut arena, root) = Arena::with_data(root_data);
+    ///
+    /// // the Germanic branch
+    /// let germanic = root.append(&mut arena, "Germanic");
+    /// let west = germanic.append(&mut arena, "West");
+    /// let scots = west.append(&mut arena, "Scots");
+    /// let english = west.append(&mut arena, "English");
+    ///
+    /// // the slavic branch
+    /// let slavic = root.append(&mut arena, "Slavic");
+    /// let polish = slavic.append(&mut arena, "Polish");
+    /// let russian = slavic.append(&mut arena, "Russian");
+    ///
+    /// // the Romance branch
+    /// let romance = arena.new_node("Romance");
+    /// let french = romance.append(&mut arena, "French");
+    /// let italian = romance.append(&mut arena, "Italian");
+    ///
+    /// // replace germanic with romance
+    /// germanic.replace(&mut arena, romance).unwrap();
+    ///
+    /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Indo-European"));
+    /// assert_eq!(iter.next(), Some("Romance"));
+    /// assert_eq!(iter.next(), Some("French"));
+    /// assert_eq!(iter.next(), Some("Italian"));
+    /// assert_eq!(iter.next(), Some("Slavic"));
+    /// assert_eq!(iter.next(), Some("Polish"));
+    /// assert_eq!(iter.next(), Some("Russian"));
+    /// assert!(iter.next().is_none());
+    /// ```
+    pub fn replace<T>(self, arena: &mut Arena<T>, other: Token)
+        -> Result<(), Error> {
+        let self_node = match arena.get(self) {
+            None => panic!("Invalid token"),
+            Some(n) => n
+        };
+        let parent = self_node.parent;
+        let previous_sibling = self_node.previous_sibling;
+        let next_sibling = self_node.next_sibling;
+
+        let other_node = match arena.get_mut(other) {
+            None => panic!("Invalid token"),
+            Some(n) => n
+        };
+
+        // check that the other node is really a root node of its own
+        match (other_node.previous_sibling,
+               other_node.next_sibling,
+               other_node.parent) {
+            (None, None, None) => (),
+            _ => return Err(Error::NotAFreeNode)
+        }
+
+        // replace the self node with the other node
+        other_node.parent = parent;
+        other_node.next_sibling = next_sibling;
+        other_node.previous_sibling = previous_sibling;
+
+        let self_node = &mut arena[self];  // indexability has been checked
+        self_node.parent = None;
+        self_node.previous_sibling = None;
+        self_node.next_sibling = None;
+
+        // update previous_sibling, next_sibling and parent of the self node
+        match previous_sibling {
+            Some(sibling) => match arena.get_mut(sibling) {
+                None => panic!("Corrupt arena"),
+                Some(node) => node.next_sibling = Some(other)
+            },
+            None => if let Some(p) = parent {
+                match arena.get_mut(p) {
+                    None => panic!("Corrupt arena"),
+                    Some(node) => node.first_child = Some(other)
+                }
+            }
+        }
+
+        if let Some(sibling) = next_sibling {
+            match arena.get_mut(sibling) {
+                None => panic!("Corrupt arena"),
+                Some(node) => node.previous_sibling = Some(other)
+            }
+        }
+
+        Ok(())
     }
 
     /// Returns an iterator of tokens of ancestor nodes.
@@ -972,6 +1080,70 @@ impl Token {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn replace() {
+        // root node that we will attach subtrees to
+        let root_data = "Indo-European";
+        let (mut arena, root) = Arena::with_data(root_data);
+       
+        // the Germanic branch
+        let germanic = root.append(&mut arena, "Germanic");
+        let west = germanic.append(&mut arena, "West");
+        west.append(&mut arena, "Scots");
+        west.append(&mut arena, "English");
+       
+        // the slavic branch
+        let slavic = root.append(&mut arena, "Slavic");
+        slavic.append(&mut arena, "Polish");
+        slavic.append(&mut arena, "Russian");
+       
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+            .map(|x| x.data);
+        assert_eq!(iter.next(), Some("Indo-European"));
+        assert_eq!(iter.next(), Some("Germanic"));
+        assert_eq!(iter.next(), Some("West"));
+        assert_eq!(iter.next(), Some("Scots"));
+        assert_eq!(iter.next(), Some("English"));
+        assert_eq!(iter.next(), Some("Slavic"));
+        assert_eq!(iter.next(), Some("Polish"));
+        assert_eq!(iter.next(), Some("Russian"));
+        assert!(iter.next().is_none());
+
+        // the Romance branch
+        let romance = arena.new_node("Romance");
+        romance.append(&mut arena, "French");
+        romance.append(&mut arena, "Italian");
+       
+        // replace germanic with romance
+        germanic.replace(&mut arena, romance).unwrap();
+       
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+            .map(|x| x.data);
+        assert_eq!(iter.next(), Some("Indo-European"));
+        assert_eq!(iter.next(), Some("Romance"));
+        assert_eq!(iter.next(), Some("French"));
+        assert_eq!(iter.next(), Some("Italian"));
+        assert_eq!(iter.next(), Some("Slavic"));
+        assert_eq!(iter.next(), Some("Polish"));
+        assert_eq!(iter.next(), Some("Russian"));
+        assert!(iter.next().is_none());
+
+        // How about the other way around (replacing the slavic branch instead
+        slavic.replace(&mut arena, germanic).unwrap();
+
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+            .map(|x| x.data);
+        assert_eq!(iter.next(), Some("Indo-European"));
+        assert_eq!(iter.next(), Some("Romance"));
+        assert_eq!(iter.next(), Some("French"));
+        assert_eq!(iter.next(), Some("Italian"));
+        assert_eq!(iter.next(), Some("Germanic"));
+        assert_eq!(iter.next(), Some("West"));
+        assert_eq!(iter.next(), Some("Scots"));
+        assert_eq!(iter.next(), Some("English"));
+        assert!(iter.next().is_none());
+    }
 
     #[test]
     fn subtree_tokens_postord() {

@@ -176,7 +176,7 @@ impl<T> Arena<T> {
     /// // the Germanic branch
     /// let germanic = root.append(&mut arena, "Germanic");
     /// let west = germanic.append(&mut arena, "West");
-    /// let scotts = west.append(&mut arena, "Scotts");
+    /// let scots = west.append(&mut arena, "Scots");
     /// let english = west.append(&mut arena, "English");
     ///
     /// // detach the west branch from the main tree
@@ -191,7 +191,7 @@ impl<T> Arena<T> {
     ///
     /// // its children are still areound
     /// let mut iter = west_children.iter().map(|&t| arena[t].data);
-    /// assert_eq!(iter.next(), Some("Scotts"));
+    /// assert_eq!(iter.next(), Some("Scots"));
     /// assert_eq!(iter.next(), Some("English"));
     /// assert!(iter.next().is_none());
     /// ```
