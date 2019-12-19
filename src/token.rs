@@ -163,10 +163,9 @@ impl Token {
         new_node_token
     }
 
-    /// Insert a node in the arena after the given node. Returns error if the
-    /// "other node" is not a root node of a tree (as in it already has a parent
-    /// and/or siblings). To attach a tree from a different arena, use
-    /// [`copy_and_append_subtree`] instead.
+    /// Set a node in the arena as the next sibling of the given node. Returns
+    /// error if the "other node" is not a root node of a tree (as in it already
+    /// has a parent and/or siblings).
     ///
     /// **Note**: for performance reasons, this operation does not check whether
     /// the "self" node is in fact a descendant of the other tree. A cyclic
@@ -211,10 +210,9 @@ impl Token {
         node_operation(self, arena, other, Token::insert_after)
     }
 
-    /// Insert a node in the arena before the given node. Returns error if the
-    /// "other node" is not a root node of a tree (as in it already has a parent
-    /// and/or siblings). To attach a tree from a different arena, use
-    /// [`copy_and_append_subtree`] instead.
+    /// Set a node in the arena as the previous sibling of the given node.
+    /// Returns error if the "other node" is not a root node of a tree (as in it
+    /// already has a parent and/or siblings).
     ///
     /// **Note**: for performance reasons, this operation does not check whether
     /// the "self" node is in fact a descendant of the other tree. A cyclic
