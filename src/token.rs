@@ -2,6 +2,7 @@
 use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
+use std::mem::MaybeUninit;
 
 use crate::Error;
 use crate::iter::*;
@@ -12,6 +13,21 @@ use crate::arena::Arena;
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Hash)]
 pub struct Token {
     pub (crate) index: NonZeroUsize
+}
+
+fn node_operation<T>(
+    self_token: Token,
+    arena: &mut Arena<T>,
+    other_token: Token,
+    func: fn(Token, &mut Arena<T>, T) -> Token
+) -> Result<(), Error> {
+    // only a placeholder to get around some trait requirements so I can
+    // reuse code. The uninitialized data will be removed so no risk here.
+    let dummy_data: T = unsafe { MaybeUninit::zeroed().assume_init() };
+    let token = func(self_token, arena, dummy_data);
+    token.replace_node(arena, other_token)?;
+    arena.remove(token);  // remove uninitialized data
+    Ok(())
 }
 
 impl Token {
@@ -147,6 +163,102 @@ impl Token {
         new_node_token
     }
 
+    /// Insert a node in the arena after the given node. Returns error if the
+    /// "other node" is not a root node of a tree (as in it already has a parent
+    /// and/or siblings). To attach a tree from a different arena, use
+    /// [`copy_and_append_subtree`] instead.
+    ///
+    /// **Note**: for performance reasons, this operation does not check whether
+    /// the "self" node is in fact a descendant of the other tree. A cyclic
+    /// graph may result.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    ///
+    /// # Examples:
+    /// ```
+    /// use atree::Arena;
+    /// use atree::iter::TraversalOrder;
+    ///
+    /// // root node that we will attach subtrees to
+    /// let root_data = "Indo-European";
+    /// let (mut arena, root) = Arena::with_data(root_data);
+    ///
+    /// let germanic = root.append(&mut arena, "Germanic");
+    /// let scots = germanic.append(&mut arena, "German");
+    /// let english = germanic.append(&mut arena, "English");
+    ///
+    /// let romance = arena.new_node("Romance");
+    /// let french = romance.append(&mut arena, "French");
+    /// let spanish = romance.append(&mut arena, "Spanish");
+    ///
+    /// germanic.insert_node_after(&mut arena, romance);
+    ///
+    /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Indo-European"));
+    /// assert_eq!(iter.next(), Some("Germanic"));
+    /// assert_eq!(iter.next(), Some("German"));
+    /// assert_eq!(iter.next(), Some("English"));
+    /// assert_eq!(iter.next(), Some("Romance"));
+    /// assert_eq!(iter.next(), Some("French"));
+    /// assert_eq!(iter.next(), Some("Spanish"));
+    /// assert!(iter.next().is_none())
+    /// ```
+    pub fn insert_node_after<T>(self, arena: &mut Arena<T>, other: Token)
+        -> Result<(), Error> {
+        node_operation(self, arena, other, Token::insert_after)
+    }
+
+    /// Insert a node in the arena before the given node. Returns error if the
+    /// "other node" is not a root node of a tree (as in it already has a parent
+    /// and/or siblings). To attach a tree from a different arena, use
+    /// [`copy_and_append_subtree`] instead.
+    ///
+    /// **Note**: for performance reasons, this operation does not check whether
+    /// the "self" node is in fact a descendant of the other tree. A cyclic
+    /// graph may result.
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    ///
+    /// # Examples:
+    /// ```
+    /// use atree::Arena;
+    /// use atree::iter::TraversalOrder;
+    ///
+    /// // root node that we will attach subtrees to
+    /// let root_data = "Indo-European";
+    /// let (mut arena, root) = Arena::with_data(root_data);
+    ///
+    /// let germanic = root.append(&mut arena, "Germanic");
+    /// let scots = germanic.append(&mut arena, "German");
+    /// let english = germanic.append(&mut arena, "English");
+    ///
+    /// let romance = arena.new_node("Romance");
+    /// let french = romance.append(&mut arena, "French");
+    /// let spanish = romance.append(&mut arena, "Spanish");
+    ///
+    /// germanic.insert_node_before(&mut arena, romance);
+    ///
+    /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Indo-European"));
+    /// assert_eq!(iter.next(), Some("Romance"));
+    /// assert_eq!(iter.next(), Some("French"));
+    /// assert_eq!(iter.next(), Some("Spanish"));
+    /// assert_eq!(iter.next(), Some("Germanic"));
+    /// assert_eq!(iter.next(), Some("German"));
+    /// assert_eq!(iter.next(), Some("English"));
+    /// assert!(iter.next().is_none())
+    /// ```
+    pub fn insert_node_before<T>(self, arena: &mut Arena<T>, other: Token)
+        -> Result<(), Error> {
+        node_operation(self, arena, other, Token::insert_before)
+    }
+
     /// Creates a new node with the given data and sets as the next sibling of
     /// the current node.
     ///
@@ -241,8 +353,8 @@ impl Token {
     /// let italian = romance.append(&mut arena, "Italian");
     ///
     /// // attach subtrees
-    /// root.append_tree(&mut arena, romance).unwrap();
-    /// root.append_tree(&mut arena, germanic).unwrap();
+    /// root.append_node(&mut arena, romance).unwrap();
+    /// root.append_node(&mut arena, germanic).unwrap();
     ///
     /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
     ///     .map(|x| x.data);
@@ -258,34 +370,9 @@ impl Token {
     /// ```
     ///
     /// [`copy_and_append_subtree`]: struct.Arena.html#method.copy_and_append_subtree
-    pub fn append_tree<T>(self, arena: &mut Arena<T>, other_tree_root: Self)
+    pub fn append_node<T>(self, arena: &mut Arena<T>, other: Self)
         -> Result<(), Error> {
-        // check that the other node is really a root node of its own
-        match arena.get(other_tree_root) {
-            None => panic!("Invalid token"),
-            Some(node) => match (node.previous_sibling, node.next_sibling, node.parent) {
-                (None, None, None) => (),
-                _ => return Err(Error::NotAFreeNode)
-            }
-        }
-
-        // update previous_sibling, next_sibling and parent
-        let previous_sibling = match self.children_mut(arena).last() {
-            None => {
-                // children_mut will have checked indexability so this will not
-                // fail
-                arena[self].first_child = Some(other_tree_root);
-                None
-            },
-            Some(last_child) => {
-                last_child.next_sibling = Some(other_tree_root);
-                Some(last_child.token)
-            }
-        };
-
-        // children_mut will have checked indexability so this will not fail
-        arena[other_tree_root].previous_sibling = previous_sibling;
-        Ok(())
+        node_operation(self, arena, other, Token::append)
     }
 
     /// Detaches the given node and its descendants into its own tree while
@@ -402,8 +489,8 @@ impl Token {
     /// let french = romance.append(&mut arena, "French");
     /// let italian = romance.append(&mut arena, "Italian");
     ///
-    /// // replace germanic with romance
-    /// germanic.replace(&mut arena, romance).unwrap();
+    /// // replace_node germanic with romance
+    /// germanic.replace_node(&mut arena, romance).unwrap();
     ///
     /// let mut iter = root.subtree(&arena, TraversalOrder::Pre)
     ///     .map(|x| x.data);
@@ -416,7 +503,7 @@ impl Token {
     /// assert_eq!(iter.next(), Some("Russian"));
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn replace<T>(self, arena: &mut Arena<T>, other: Token)
+    pub fn replace_node<T>(self, arena: &mut Arena<T>, other: Token)
         -> Result<(), Error> {
         let self_node = match arena.get(self) {
             None => panic!("Invalid token"),
@@ -439,7 +526,7 @@ impl Token {
             _ => return Err(Error::NotAFreeNode)
         }
 
-        // replace the self node with the other node
+        // replace_node the self node with the other node
         other_node.parent = parent;
         other_node.next_sibling = next_sibling;
         other_node.previous_sibling = previous_sibling;
@@ -1082,7 +1169,8 @@ mod test {
     use super::*;
 
     #[test]
-    fn replace() {
+    #[allow(clippy::cognitive_complexity)]
+    fn replace_node() {
         // root node that we will attach subtrees to
         let root_data = "Indo-European";
         let (mut arena, root) = Arena::with_data(root_data);
@@ -1115,8 +1203,8 @@ mod test {
         romance.append(&mut arena, "French");
         romance.append(&mut arena, "Italian");
        
-        // replace germanic with romance
-        germanic.replace(&mut arena, romance).unwrap();
+        // replace_node germanic with romance
+        germanic.replace_node(&mut arena, romance).unwrap();
        
         let mut iter = root.subtree(&arena, TraversalOrder::Pre)
             .map(|x| x.data);
@@ -1130,7 +1218,7 @@ mod test {
         assert!(iter.next().is_none());
 
         // How about the other way around (replacing the slavic branch instead
-        slavic.replace(&mut arena, germanic).unwrap();
+        slavic.replace_node(&mut arena, germanic).unwrap();
 
         let mut iter = root.subtree(&arena, TraversalOrder::Pre)
             .map(|x| x.data);

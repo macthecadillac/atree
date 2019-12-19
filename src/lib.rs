@@ -1,10 +1,8 @@
-//! An arena based tree structure. Being an arena based tree, this structure is
-//! implemented on top of `Vec` and as such eliminates the need for the
-//! countless heap allocations or unsafe code that a pointer based tree
-//! structure would require. This approach also makes parallel access feasible.
-//! On top of the basic node insertion and removal operations, care is taken to
-//! provide various functions which enable splitting, merging, and also numerous
-//! kinds of immutable and mutable iterations over the nodes.
+//! An arena based tree structure, backed by a custom allocator (ultimately
+//! built on `Vec`) that makes node removal a possibility. On top of the basic
+//! node insertion and removal operations, there are also many kinds of
+//! immutable and mutable iterators provided for various kinds of tree traversal
+//! operations.
 //!
 //! Most of the code in the crate is `unsafe` free, except for the mutable
 //! iterators, where the `unsafe` code is lifted from the core Rust
@@ -25,18 +23,18 @@
 //! let mut arena = Arena::default();
 //! assert!(arena.is_empty());
 //!
-//! // add stuff to the arena when we feel like it
-//! let root_data = "Indo-European";
-//! let root_node_token = arena.new_node(root_data);
+//! // create a tree in the arena
+//! let data = "Indo-European";
+//! let token = arena.new_node(data);
 //! assert_eq!(arena.node_count(), 1)
 //! ```
 //!
-//! Another way is to directly initialize an arena with a node:
+//! There is a shortcut to the above operation:
 //! ```
 //! use atree::Arena;
 //!
-//! let root_data = "Indo-European";
-//! let (mut arena, root_token) = Arena::with_data(root_data);
+//! let data = "Indo-European";
+//! let (mut arena, token) = Arena::with_data(data);
 //! assert_eq!(arena.node_count(), 1)
 //! ```
 //!
