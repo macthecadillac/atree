@@ -157,37 +157,6 @@ impl<T> Arena<T> {
         }
     }
 
-    /// Overwrites node with given data and removes all its descendants.
-    ///
-    /// # Panics:
-    ///
-    /// Panics if the token does not correspond to a node in the arena.
-    ///
-    /// # Examples:
-    ///
-    /// ```
-    /// use atree::Arena;
-    ///
-    /// let root_data = 1usize;
-    /// let (mut arena, root_token) = Arena::with_data(root_data);
-    ///
-    /// let next_node = root_token.append(&mut arena, 2usize);
-    /// let nnext_node1 = next_node.append(&mut arena, 3usize);
-    /// let nnext_node2 = next_node.append(&mut arena, 4usize);
-    /// 
-    /// // now overwrite "next_node"
-    /// arena.overwrite(next_node, 10);
-    /// assert_eq!(arena[next_node].data, 10);
-    ///  // the children of "next_node" are removed
-    /// assert_eq!(arena.node_count(), 2);
-    /// ```
-    pub fn overwrite(&mut self, indx: Token, data: T) {
-        indx.remove_descendants(self);  // this would panic if token is invalid
-        if let Some(node) = self.get_mut(indx) {
-            node.data = data
-        }
-    }
-
     /// Removes the given node from the arena and returns the tokens of its
     /// children. Use [`uproot`] instead if you no longer need the descendants
     /// of the node such that the freed memory could be reused.

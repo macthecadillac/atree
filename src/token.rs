@@ -15,6 +15,18 @@ pub struct Token {
 }
 
 impl Token {
+    /// Is the node a leaf?
+    ///
+    /// # Panics:
+    ///
+    /// Panics if the token does not correspond to a node in the arena.
+    pub fn is_leaf<T>(self, arena: &Arena<T>) -> bool {
+        match arena.get(self) {
+            None => panic!("Invalid token"),
+            Some(node) => node.is_leaf()
+        }
+    }
+
     /// Creates a new node with the given data and append to the given node.
     ///
     /// # Panics:

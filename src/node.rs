@@ -31,6 +31,9 @@ impl<T> Node<T> {
     /// Returns the token of the given node.
     pub fn token(&self) -> Token { self.token }
 
+    /// Is the node a leaf?
+    pub fn is_leaf(&self) -> bool { self.first_child.is_none() }
+
     /// Returns an iterator of tokens of ancestor nodes.
     ///
     /// # Examples:
