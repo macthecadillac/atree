@@ -24,7 +24,7 @@ container that encapsulates the data on the tree.
 
 We can start by initializing an empty arena and add stuff to it at a later
 time:
-```
+```rust
 use atree::Arena;
 
 let mut arena = Arena::default();
@@ -37,7 +37,7 @@ assert_eq!(arena.node_count(), 1)
 ```
 
 Another way is to directly initialize an arena with a node:
-```
+```rust
 use atree::Arena;
 
 let root_data = "Indo-European";
@@ -47,7 +47,7 @@ assert_eq!(arena.node_count(), 1)
 
 To add more data to the tree, call the `append` method on the tokens (we can't
 do this directly to the nodes because of the limitations of borrow checking).
-```
+```rust
 use atree::Arena;
 
 let root_data = "Indo-European";
@@ -58,7 +58,7 @@ assert_eq!(arena.node_count(), 2);
 
 To access/modify existing nodes in the tree, we can use indexing or
 `get`/`get_mut`.
-```
+```rust
 use atree::Arena;
 
 let root_data = "Indo-European";
@@ -95,7 +95,7 @@ We can iterate over the elements by calling iterators on both the tokens or the
 nodes. Check the documentation of `Token` or `Node<T>` for a list of
 iterators. There is a version of each of the iterators that iterates over tokens
 instead of node references. See the docs for details.
-```
+```rust
 use atree::Arena;
 
 let root_data = "Indo-European";
@@ -133,7 +133,7 @@ assert_eq!(arena[lang2].data, "Not romantic enough");
 To remove a single node from the arena, use the `remove` method. This will
 detach all the children of the node from the tree (but not remove them from
 memory).
-```
+```rust
 use atree::Arena;
 use atree::iter::TraversalOrder;
 
@@ -167,7 +167,7 @@ assert!(iter.next().is_none());
 To uproot a tree from the arena, call the `uproot` method on the arena.
 Note that will also remove all descendants of the node. After removal, the
 "freed" memory will be reused if and when new data is inserted.
-```
+```rust
 use atree::Arena;
 
 let root_data = "Indo-European";
