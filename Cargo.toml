@@ -1,6 +1,6 @@
 [package]
 name = "atree"
-version = "0.5.1"  # remember to update html_root_url
+version = "0.5.2"  # remember to update html_root_url
 authors = ["Mac Lee <macthecadillac@gmail.com>"]
 edition = "2018"
 license = "MIT"
