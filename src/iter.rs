@@ -247,6 +247,9 @@ impl<'a, T> Iterator for SubtreeMut<'a, T> {
     }
 }
 
+unsafe impl<T: Sync> Sync for SubtreeMut<'_, T> {}
+unsafe impl<T: Send> Send for SubtreeMut<'_, T> {}
+
 /// An iterator of tokens of siblings that follow a given node.
 ///
 /// This `struct` is created by the `following_siblings_tokens` methods on
@@ -443,6 +446,9 @@ macro_rules! iterator {
                 }
             }
         }
+
+        unsafe impl<T: Sync> Sync for $name<'_, T> {}
+        unsafe impl<T: Send> Send for $name<'_, T> {}
     }
 }
 
