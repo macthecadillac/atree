@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/atree/0.5.0")]
+#![doc(html_root_url = "https://docs.rs/atree/0.5.1")]
 //! An arena based tree structure, backed by a custom allocator (ultimately
 //! built on `Vec`) that makes node removal a possibility. On top of the basic
 //! node insertion and removal operations, there are also many kinds of
