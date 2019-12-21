@@ -4,6 +4,7 @@
 
 [![Build Status](https://travis-ci.com/macthecadillac/atree.svg?branch=master)](https://travis-ci.com/macthecadillac/atree)
 [![Crates.io](https://img.shields.io/crates/v/atree.svg)](https://crates.io/crates/atree)
+[![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/saschagrunert/indextree/blob/master/LICENSE)
 
 An arena based tree structure, backed by a custom allocator (ultimately
 built on `Vec`) that makes node removal a possibility. On top of the basic
@@ -214,5 +215,3 @@ assert_eq!(arena.node_count(), 4);
 [`get_mut`]: struct.Arena.html#method.get_mut
 [`uproot`]: struct.Arena.html#method.uproot
 [`remove`]: struct.Arena.html#method.remove
-
-## License: MIT
