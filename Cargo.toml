@@ -1,9 +1,17 @@
 [package]
 name = "atree"
-version = "0.4.3"
+version = "0.5.0"  # remember to update html_root_url
 authors = ["Mac Lee <macthecadillac@gmail.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/macthecadillac/atree"
+homepage = "https://github.com/macthecadillac/atree"
+description = "An arena based tree structure with removal support"
+documentation = "https://docs.rs/atree"
+
+categories = ["data-structures"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1.0", optional = true }

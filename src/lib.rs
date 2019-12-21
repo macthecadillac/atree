@@ -1,3 +1,4 @@
+#![doc(html_root_url = "https://docs.rs/atree/0.5.0")]
 //! An arena based tree structure, backed by a custom allocator (ultimately
 //! built on `Vec`) that makes node removal a possibility. On top of the basic
 //! node insertion and removal operations, there are also many kinds of
@@ -8,12 +9,30 @@
 //! iterators, where the `unsafe` code is lifted from the core Rust
 //! implementation of `IterMut`.
 //!
-//! # Quick Start
+//! # General Guide to the API
 //!
 //! The crate consists of three main `struct`s: [`Arena<T>`], [`Token`] and
 //! [`Node<T>`]. `Arena<T>` provides the arena in which all data is stored.
 //! The data can then be accessed by indexing `Arena<T>` with `Token`. `Node<T>`
 //! is a container that encapsulates the data on the tree.
+//!
+//! As a general rule of thumb, methods that affect the memory layout such as
+//! splitting and merging arenas, or methods to create and destroy nodes regardless
+//! of existing tree structures like creating a free node, are defined on
+//! `Arena<T>`. Methods that alter pre-existing tree structures such as adding
+//! nodes with respect to existing ones ([`append`] or [`insert_after`] for
+//! instance) or splitting and attaching existing trees are defined on `Tokens`.
+//!
+//! When it comes to iterating, iterators can be created from methods on both
+//! `Token` and `Node<T>`. There are two versions of iterators, iterators over
+//! tokens or references to the nodes. Both can be created by methods on `Token`
+//! and `Node<T>`. However, due to the rules of borrow checking, mutable
+//! iterators over the node references are only defined on `Token`.
+//!
+//! # Crate Feature Flags
+//!   - `serde`: support for serde 1.x. Optional feature/dependency.
+//!
+//! # Usage Examples
 //!
 //! We can start by initializing an empty arena and add stuff to it at a later
 //! time:
@@ -184,11 +203,15 @@
 //! [`Token`]: struct.Token.html
 //! [`Node<T>`]: struct.Node.html
 //! [`append`]: struct.Token.html#method.append
+//! [`insert_after`]: struct.Token.html#method.insert_after
 //! [`get`]: struct.Arena.html#method.get
 //! [`get_mut`]: struct.Arena.html#method.get_mut
 //! [`uproot`]: struct.Arena.html#method.uproot
 //! [`remove`]: struct.Arena.html#method.remove
-// TODO: use NonZeroUsize instead of usize in Token
+
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
 
 mod alloc;
 mod arena;
@@ -201,4 +224,8 @@ pub use arena::Arena;
 pub use node::Node;
 
 #[derive(Clone, Copy, Debug)]
-pub enum Error { NotAFreeNode }
+/// The Error type
+pub enum Error {
+    /// Not a root node error
+    NotARootNode
+}

@@ -31,7 +31,7 @@ fn node_operation<T>(
 }
 
 impl Token {
-    /// Is the node a leaf?
+    /// Checks whether a given node is actually a leaf.
     ///
     /// # Panics:
     ///
@@ -374,7 +374,7 @@ impl Token {
     }
 
     /// Detaches the given node and its descendants into its own tree while
-    /// remaining in the same arena. To detach and allocate the subtree into its
+    /// keeping it in the same arena. To detach and allocate the subtree into its
     /// own arena, use [`split_at`] instead.
     ///
     /// # Panics:
@@ -452,7 +452,8 @@ impl Token {
     }
 
     /// Replace the subtree of self with the subtree of other. Does not remove
-    /// self or its descendants but simply making it a standalone tree.
+    /// self or its descendants but simply makes it a standalone tree within the
+    /// arena.
     ///
     /// **Note**: for performance reasons, this operation does not check whether
     /// the "other" node is in fact a descendant of the parent tree of self. A
@@ -521,7 +522,7 @@ impl Token {
                other_node.next_sibling,
                other_node.parent) {
             (None, None, None) => (),
-            _ => return Err(Error::NotAFreeNode)
+            _ => return Err(Error::NotARootNode)
         }
 
         // replace_node the self node with the other node

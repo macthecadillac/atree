@@ -1,21 +1,42 @@
 # Arena based tree structure
 
 [![Build Status](https://travis-ci.com/macthecadillac/atree.svg?branch=master)](https://travis-ci.com/macthecadillac/atree)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Crates.io](https://img.shields.io/crates/v/atree.svg)](https://crates.io/crates/atree)
 
-An arena based tree structure. Being an arena based tree, this structure is
-implemented on top of `Vec` and as such eliminates the need for the countless
-heap allocations or unsafe code that a pointer based tree structure would
-require. This approach also makes parallel access feasible.  On top of the basic
-node insertion and removal operations, care is taken to provide various
-functions which enable splitting, merging, and also numerous kinds of immutable
-and mutable iterations over the nodes.
+An arena based tree structure, backed by a custom allocator (ultimately
+built on `Vec`) that makes node removal a possibility. On top of the basic
+node insertion and removal operations, there are also many kinds of
+immutable and mutable iterators provided for various kinds of tree traversal
+operations.
 
 Most of the code in the crate is `unsafe` free, except for the mutable
-iterators, where the `unsafe` code is lifted from the core Rust implementation
-of `IterMut`.
+iterators, where the `unsafe` code is lifted from the core Rust
+implementation of `IterMut`.
 
-# Quick Start
+# General Guide to the API
+
+The crate consists of three main `struct`s: [`Arena<T>`], [`Token`] and
+[`Node<T>`]. `Arena<T>` provides the arena in which all data is stored.
+The data can then be accessed by indexing `Arena<T>` with `Token`. `Node<T>`
+is a container that encapsulates the data on the tree.
+
+As a general rule of thumb, methods that affect the memory layout such as
+splitting and merging arenas, or methods to create and destroy nodes regardless
+of existing tree structures like creating a free node, are defined on
+`Arena<T>`. Methods that alter pre-existing tree structures such as adding
+nodes with respect to existing ones ([`append`] or [`insert_after`] for
+instance) or splitting and attaching existing trees are defined on `Tokens`.
+
+When it comes to iterating, iterators can be created from methods on both
+`Token` and `Node<T>`. There are two versions of iterators, iterators over
+tokens or references to the nodes. Both can be created by methods on `Token`
+and `Node<T>`. However, due to the rules of borrow checking, mutable
+iterators over the node references are only defined on `Token`.
+
+# Crate Feature Flags
+  - `serde`: support for serde 1.x. Optional feature/dependency.
+
+# Usage Examples
 
 The crate consists of three main `struct`s: `Arena<T>`, `Token` and
 `Node<T>`. `Arena<T>` provides the arena in which all data is stored.  The

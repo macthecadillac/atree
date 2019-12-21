@@ -9,7 +9,8 @@ use crate::node::Node;
 use crate::token::Token;
 
 /// A struct that provides the arena allocator.
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Arena<T> {
     pub (crate) allocator: Allocator<Node<T>>
 }
