@@ -18,8 +18,8 @@ implementation of `IterMut`.
 
 ## General Guide to the API
 
-The crate consists of three main `struct`s: [`Arena<T>`], [`Token`] and
-[`Node<T>`]. `Arena<T>` provides the arena in which all data is stored.
+The crate consists of three main `struct`s: `Arena<T>`, `Token` and
+`Node<T>`. `Arena<T>` provides the arena in which all data is stored.
 The data can then be accessed by indexing `Arena<T>` with `Token`. `Node<T>`
 is a container that encapsulates the data on the tree.
 
@@ -27,7 +27,7 @@ As a general rule of thumb, methods that affect the memory layout such as
 splitting and merging arenas, or methods to create and destroy nodes regardless
 of existing tree structures like creating a free node, are defined on
 `Arena<T>`. Methods that alter pre-existing tree structures such as adding
-nodes with respect to existing ones ([`append`] or [`insert_after`] for
+nodes with respect to existing ones (`append` or `insert_after` for
 instance) or splitting and attaching existing trees are defined on `Tokens`.
 
 When it comes to iterating, iterators can be created from methods on both
@@ -35,6 +35,9 @@ When it comes to iterating, iterators can be created from methods on both
 tokens or references to the nodes. Both can be created by methods on `Token`
 and `Node<T>`. However, due to the rules of borrow checking, mutable
 iterators over the node references are only defined on `Token`.
+
+The API might change from version to version before we hit 1.0. Versioning
+follows semver rules when the API does change.
 
 ## Crate Feature Flags
   - `serde`: support for serde 1.x. Optional feature/dependency.
@@ -64,7 +67,7 @@ let (mut arena, token) = Arena::with_data(data);
 assert_eq!(arena.node_count(), 1)
 ```
 
-To add more data to the tree, call the [`append`] method on the tokens (we
+To add more data to the tree, call the `append` method on the tokens (we
 can't do this directly to the nodes because of the limitations of borrow
 checking).
 ```rust
@@ -77,7 +80,7 @@ assert_eq!(arena.node_count(), 2);
 ```
 
 To access/modify existing nodes in the tree, we can use indexing or
-[`get`]/[`get_mut`].
+`get`/`get_mut`.
 ```rust
 use atree::Arena;
 
@@ -112,7 +115,7 @@ assert_eq!(branch3, branch3_node.token());
 ```
 
 We can iterate over the elements by calling iterators on both the tokens
-or the nodes. Check the documentation of [`Token`] or [`Node<T>`] for a list
+or the nodes. Check the documentation of `Token` or `Node<T>` for a list
 of iterators. There is a version of each of the iterators that iterates
 over tokens instead of node references. See the docs for details.
 ```rust
@@ -150,7 +153,7 @@ assert_eq!(arena[lang1].data, "Not romantic enough");
 assert_eq!(arena[lang2].data, "Not romantic enough");
 ```
 
-To remove a single node from the arena, use the [`remove`] method. This will
+To remove a single node from the arena, use the `remove` method. This will
 detach all the children of the node from the tree (but not remove them from
 memory).
 ```rust
@@ -184,7 +187,7 @@ assert_eq!(iter.next(), Some("English"));
 assert!(iter.next().is_none());
 ```
 
-To uproot a tree from the arena, call the [`uproot`] method on the arena.
+To uproot a tree from the arena, call the `uproot` method on the arena.
 Note that will also remove all descendants of the node. After removal, the
 "freed" memory will be reused if and when new data is inserted.
 ```rust
@@ -206,12 +209,3 @@ arena.uproot(branch2);  // boring languages anyway
 assert_eq!(arena.node_count(), 4);
 ```
 
-[`Arena<T>`]: struct.Arena.html
-[`Token`]: struct.Token.html
-[`Node<T>`]: struct.Node.html
-[`append`]: struct.Token.html#method.append
-[`insert_after`]: struct.Token.html#method.insert_after
-[`get`]: struct.Arena.html#method.get
-[`get_mut`]: struct.Arena.html#method.get_mut
-[`uproot`]: struct.Arena.html#method.uproot
-[`remove`]: struct.Arena.html#method.remove

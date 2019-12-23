@@ -29,6 +29,9 @@
 //! and `Node<T>`. However, due to the rules of borrow checking, mutable
 //! iterators over the node references are only defined on `Token`.
 //!
+//! The API might change from version to version before we hit 1.0. Versioning
+//! follows semver rules when the API does change.
+//!
 //! # Crate Feature Flags
 //!   - `serde`: support for serde 1.x. Optional feature/dependency.
 //!
