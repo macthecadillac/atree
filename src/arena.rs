@@ -324,7 +324,7 @@ impl<T> Arena<T> where T: Clone {
             None => panic!("Invalid token")
         };
         let (mut arena, root) = Arena::with_data(root_data);
-        for child_token in token.children_tokens(&self) {
+        for child_token in token.children_tokens(self) {
             arena.copy_and_append_subtree(root, self, child_token);
         }
         self.uproot(token);

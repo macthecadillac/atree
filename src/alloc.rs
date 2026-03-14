@@ -124,7 +124,7 @@ impl<T> Allocator<T> {
             Some(Cell::Nothing(_)) | None => None,
             Some(mut cell) => {
                 let mut x = Cell::Nothing(self.head);
-                mem::swap(&mut x, &mut cell);
+                mem::swap(&mut x, cell);
                 self.head = Some(token.index);
                 self.len -= 1;
                 match x {
