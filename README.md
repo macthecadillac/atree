@@ -2,8 +2,9 @@
 
 ## Arena based tree structure with node removal support
 
-[![Build Status](https://travis-ci.com/macthecadillac/atree.svg?branch=master)](https://travis-ci.com/macthecadillac/atree)
-[![Crates.io](https://img.shields.io/crates/v/atree.svg)](https://crates.io/crates/atree)
+[![Build](https://github.com/macthecadillac/atree/actions/workflows/ci.yml/badge.svg)](https://github.com/macthecadillac/atree/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/atree.svg)](https://crates.io/crates/atree)
+[![docs.rs](https://docs.rs/atree/badge.svg)](https://docs.rs/atree)
 [![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/saschagrunert/indextree/blob/master/LICENSE)
 
 An arena based tree structure, backed by a custom allocator (ultimately
