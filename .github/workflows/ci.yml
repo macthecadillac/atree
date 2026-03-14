@@ -21,3 +21,21 @@ jobs:
           toolchain: ${{ matrix.rust }}
       - run: cargo test
       - run: cargo test --features serde
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run coverage (default features)
+        run: cargo tarpaulin --out Lcov --output-dir coverage-default
+      - name: Run coverage (serde feature)
+        run: cargo tarpaulin --features serde --out Lcov --output-dir coverage-serde
+      - name: Upload to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          files: coverage-default/lcov.info coverage-serde/lcov.info
