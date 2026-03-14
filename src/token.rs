@@ -4,6 +4,9 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 use std::mem::MaybeUninit;
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
 use crate::Error;
 use crate::iter::*;
 use crate::node::Node;
@@ -11,6 +14,7 @@ use crate::arena::Arena;
 
 /// A `Token` is a handle to a node in the arena.
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Token {
     pub (crate) index: NonZeroUsize
 }
@@ -1018,9 +1022,9 @@ impl Token {
     /// ```
     pub fn subtree_tokens<'a, T>(self, arena: &'a Arena<T>, order: TraversalOrder)
         -> SubtreeTokens<'a, T> {
-        let preord_tokens_next = |iter: &mut SubtreeTokens<T>| 
+        let preord_tokens_next = |iter: &mut SubtreeTokens<T>|
             depth_first_tokens_next(iter, preorder_next);
-        let postord_tokens_next = |iter: &mut SubtreeTokens<T>| 
+        let postord_tokens_next = |iter: &mut SubtreeTokens<T>|
             depth_first_tokens_next(iter, postorder_next);
         match order {
             TraversalOrder::Pre => SubtreeTokens {
@@ -1173,18 +1177,18 @@ mod test {
         // root node that we will attach subtrees to
         let root_data = "Indo-European";
         let (mut arena, root) = Arena::with_data(root_data);
-       
+
         // the Germanic branch
         let germanic = root.append(&mut arena, "Germanic");
         let west = germanic.append(&mut arena, "West");
         west.append(&mut arena, "Scots");
         west.append(&mut arena, "English");
-       
+
         // the slavic branch
         let slavic = root.append(&mut arena, "Slavic");
         slavic.append(&mut arena, "Polish");
         slavic.append(&mut arena, "Russian");
-       
+
         let mut iter = root.subtree(&arena, TraversalOrder::Pre)
             .map(|x| x.data);
         assert_eq!(iter.next(), Some("Indo-European"));
@@ -1201,10 +1205,10 @@ mod test {
         let romance = arena.new_node("Romance");
         romance.append(&mut arena, "French");
         romance.append(&mut arena, "Italian");
-       
+
         // replace_node germanic with romance
         germanic.replace_node(&mut arena, romance).unwrap();
-       
+
         let mut iter = root.subtree(&arena, TraversalOrder::Pre)
             .map(|x| x.data);
         assert_eq!(iter.next(), Some("Indo-European"));
@@ -1251,7 +1255,7 @@ mod test {
     fn subtree_tokens_postord() {
         let root_data = 1usize;
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         let first_child = root_token.append(&mut arena, 2usize);
         let second_child = root_token.append(&mut arena, 3usize);
         let third_child = root_token.append(&mut arena, 4usize);
@@ -1260,7 +1264,7 @@ mod test {
         let second_grandchild = second_child.append(&mut arena, 10usize);
         let third_grandchild = second_child.append(&mut arena, 20usize);
         let great_grandchild = third_grandchild.append(&mut arena, 20usize);
-       
+
         let mut subtree = root_token.subtree_tokens(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next(), Some(first_grandchild));
         assert_eq!(subtree.next(), Some(first_child));
@@ -1272,7 +1276,7 @@ mod test {
         assert_eq!(subtree.next(), Some(fourth_child));
         assert_eq!(subtree.next(), Some(root_token));
         assert!(subtree.next().is_none());
-       
+
         let mut subtree = great_grandchild.subtree_tokens(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next(), Some(great_grandchild));
         assert!(subtree.next().is_none());
@@ -1282,14 +1286,14 @@ mod test {
     fn subtree_tokens_levelord() {
         let root_data = 1usize;
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         let first_child = root_token.append(&mut arena, 2usize);
         let second_child = root_token.append(&mut arena, 3usize);
         let third_child = root_token.append(&mut arena, 4usize);
         let first_grandchild = second_child.append(&mut arena, 10usize);
         let second_grandchild = second_child.append(&mut arena, 20usize);
         let fourth_child = root_token.append(&mut arena, 5usize);
-       
+
         let mut subtree = root_token.subtree_tokens(&arena, TraversalOrder::Level);
         assert_eq!(subtree.next(), Some(root_token));
         assert_eq!(subtree.next(), Some(first_child));
@@ -1299,7 +1303,7 @@ mod test {
         assert_eq!(subtree.next(), Some(first_grandchild));
         assert_eq!(subtree.next(), Some(second_grandchild));
         assert!(subtree.next().is_none());
-       
+
         let mut subtree = second_grandchild.subtree_tokens(&arena, TraversalOrder::Level);
         assert_eq!(subtree.next(), Some(second_grandchild));
         assert!(subtree.next().is_none());
@@ -1309,14 +1313,14 @@ mod test {
     fn subtree_postord() {
         let root_data = "Indo-European";
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         root_token.append(&mut arena, "Romance");
         root_token.append(&mut arena, "Germanic");
         let third_child = root_token.append(&mut arena, "Celtic");
         root_token.append(&mut arena, "Slavic");
         third_child.append(&mut arena, "Ulster");
         third_child.append(&mut arena, "Gaulish");
-       
+
         let mut subtree = root_token.subtree(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next().unwrap().data, "Romance");
         assert_eq!(subtree.next().unwrap().data, "Germanic");
@@ -1332,14 +1336,14 @@ mod test {
     fn subtree_levelord() {
         let root_data = "Indo-European";
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         root_token.append(&mut arena, "Romance");
         root_token.append(&mut arena, "Germanic");
         let third_child = root_token.append(&mut arena, "Slavic");
         root_token.append(&mut arena, "Hellenic");
         third_child.append(&mut arena, "Russian");
         third_child.append(&mut arena, "Ukrainian");
-       
+
         let mut subtree = root_token.subtree(&arena, TraversalOrder::Level);
         assert_eq!(subtree.next().unwrap().data, "Indo-European");
         assert_eq!(subtree.next().unwrap().data, "Romance");
@@ -1355,18 +1359,18 @@ mod test {
     fn subtree_postord_mut() {
         let root_data = 1usize;
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         root_token.append(&mut arena, 2usize);
         root_token.append(&mut arena, 3usize);
         let third_child = root_token.append(&mut arena, 4usize);
         root_token.append(&mut arena, 5usize);
         third_child.append(&mut arena, 10usize);
         third_child.append(&mut arena, 20usize);
-       
+
         for x in root_token.subtree_mut(&mut arena, TraversalOrder::Post) {
             x.data += 100;
         }
-       
+
         let mut subtree = root_token.subtree(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next().unwrap().data, 102);
         assert_eq!(subtree.next().unwrap().data, 103);
@@ -1382,18 +1386,18 @@ mod test {
     fn subtree_levelord_mut() {
         let root_data = 1usize;
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         root_token.append(&mut arena, 2usize);
         root_token.append(&mut arena, 3usize);
         let third_child = root_token.append(&mut arena, 4usize);
         root_token.append(&mut arena, 5usize);
         third_child.append(&mut arena, 10usize);
         third_child.append(&mut arena, 20usize);
-       
+
         for x in root_token.subtree_mut(&mut arena, TraversalOrder::Level) {
             x.data += 100;
         }
-       
+
         let mut subtree = root_token.subtree(&arena, TraversalOrder::Level);
         assert_eq!(subtree.next().unwrap().data, 101);
         assert_eq!(subtree.next().unwrap().data, 102);

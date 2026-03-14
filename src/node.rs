@@ -1,4 +1,7 @@
 // mutable iterators are impossible for Node<T> due to borrow checking rules
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
 use crate::arena::Arena;
 use crate::token::Token;
 use crate::iter::*;
@@ -12,6 +15,7 @@ use crate::iter::*;
 /// [`get`]: struct.Arena.html#method.get
 /// [`get_mut`]: struct.Arena.html#method.get_mut
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Node<T> {
     /// The `data` field.
     pub data: T,
@@ -334,14 +338,14 @@ mod test {
     fn subtree_tokens_postord() {
         let root_data = 1usize;
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         let first_child = root_token.append(&mut arena, 2usize);
         let second_child = root_token.append(&mut arena, 3usize);
         let third_child = root_token.append(&mut arena, 4usize);
         let first_grandchild = second_child.append(&mut arena, 10usize);
         let second_grandchild = second_child.append(&mut arena, 20usize);
         let fourth_child = root_token.append(&mut arena, 5usize);
-       
+
         let root = &arena[root_token];
         let mut subtree = root.subtree_tokens(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next(), Some(first_child));
@@ -352,7 +356,7 @@ mod test {
         assert_eq!(subtree.next(), Some(fourth_child));
         assert_eq!(subtree.next(), Some(root_token));
         assert!(subtree.next().is_none());
-       
+
         let second_child_node = &arena[second_child];
         let mut subtree = second_child_node.subtree_tokens(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next(), Some(first_grandchild));
@@ -365,14 +369,14 @@ mod test {
     fn subtree_postord() {
         let root_data = "Indo-European";
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         root_token.append(&mut arena, "Romance");
         root_token.append(&mut arena, "Germanic");
         let third_child = root_token.append(&mut arena, "Celtic");
         root_token.append(&mut arena, "Slavic");
         third_child.append(&mut arena, "Ulster");
         third_child.append(&mut arena, "Gaulish");
-       
+
         let root = &arena[root_token];
         let mut subtree = root.subtree(&arena, TraversalOrder::Post);
         assert_eq!(subtree.next().unwrap().data, "Romance");
@@ -389,14 +393,14 @@ mod test {
     fn subtree_tokens_levelord() {
         let root_data = 1usize;
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         let first_child = root_token.append(&mut arena, 2usize);
         let second_child = root_token.append(&mut arena, 3usize);
         let third_child = root_token.append(&mut arena, 4usize);
         let first_grandchild = second_child.append(&mut arena, 10usize);
         let second_grandchild = second_child.append(&mut arena, 20usize);
         let fourth_child = root_token.append(&mut arena, 5usize);
-       
+
         let root = &arena[root_token];
         let mut subtree = root.subtree_tokens(&arena, TraversalOrder::Level);
         assert_eq!(subtree.next(), Some(root_token));
@@ -413,14 +417,14 @@ mod test {
     fn subtree_levelord() {
         let root_data = "Indo-European";
         let (mut arena, root_token) = Arena::with_data(root_data);
-       
+
         root_token.append(&mut arena, "Romance");
         root_token.append(&mut arena, "Germanic");
         let third_child = root_token.append(&mut arena, "Slavic");
         root_token.append(&mut arena, "Hellenic");
         third_child.append(&mut arena, "Russian");
         third_child.append(&mut arena, "Ukrainian");
-       
+
         let root = &arena[root_token];
         let mut subtree = root.subtree(&arena, TraversalOrder::Level);
         assert_eq!(subtree.next().unwrap().data, "Indo-European");

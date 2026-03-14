@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::ops::{Index, IndexMut};
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
 use crate::alloc::Allocator;
 use crate::iter::{Branch, ChildrenTokens};
 use crate::node::Node;
@@ -233,7 +236,7 @@ impl<T> Arena<T> {
     /// let next_node = root_token.append(&mut arena, 2usize);
     /// let nnext_node1 = next_node.append(&mut arena, 3usize);
     /// let nnext_node2 = next_node.append(&mut arena, 4usize);
-    /// 
+    ///
     /// arena.uproot(next_node);
     /// let mut iter = root_token.subtree_tokens(&arena, TraversalOrder::Pre);
     /// assert_eq!(iter.next(), Some(root_token));

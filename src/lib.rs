@@ -210,7 +210,6 @@
 //! [`remove`]: struct.Arena.html#method.remove
 
 #[cfg(feature = "serde")]
-#[macro_use]
 extern crate serde;
 
 mod alloc;

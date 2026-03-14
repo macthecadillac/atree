@@ -4,9 +4,13 @@
 use std::mem;
 use std::num::NonZeroUsize;
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
+
 use crate::token::Token;
 
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Allocator<T> {
     data: Vec<Cell<T>>,
     head: Option<NonZeroUsize>,
@@ -14,6 +18,7 @@ pub struct Allocator<T> {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 enum Cell<T> {
     Just(T),
     Nothing(Option<NonZeroUsize>)

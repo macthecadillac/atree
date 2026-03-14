@@ -15,4 +15,4 @@ categories = ["data-structures"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1.0", optional = true }
+serde = { version = "1.0", optional = true, features = ["derive"] }
