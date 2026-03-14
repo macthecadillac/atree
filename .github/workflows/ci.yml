@@ -31,9 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run coverage (default features)
-        run: cargo tarpaulin --out Lcov --output-dir coverage-default
+        run: cargo tarpaulin --tests --doc --out Lcov --output-dir coverage-default
       - name: Run coverage (serde feature)
-        run: cargo tarpaulin --features serde --out Lcov --output-dir coverage-serde
+        run: cargo tarpaulin --tests --doc --features serde --out Lcov --output-dir coverage-serde
       - name: Upload to Coveralls
         uses: coverallsapp/github-action@v2
         with:
