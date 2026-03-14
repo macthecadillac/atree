@@ -23,7 +23,7 @@ fn node_operation<T>(
 ) -> Result<(), Error> {
     // only a placeholder to get around some trait requirements so I can
     // reuse code. The uninitialized data will be removed so no risk here.
-    let dummy_data: T = unsafe { MaybeUninit::zeroed().assume_init() };
+    let dummy_data: T = unsafe { MaybeUninit::uninit().assume_init() };
     let token = func(self_token, arena, dummy_data);
     token.replace_node(arena, other_token)?;
     arena.remove(token);  // remove uninitialized data
@@ -1229,6 +1229,21 @@ mod test {
         assert_eq!(iter.next(), Some("West"));
         assert_eq!(iter.next(), Some("Scots"));
         assert_eq!(iter.next(), Some("English"));
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    /// Test that NonZeroUsize as T won't be UB
+    fn nonzerousize_t_soundness() {
+        use core::num::NonZeroUsize;
+        let (mut arena, root) = Arena::<NonZeroUsize>::with_data(NonZeroUsize::new(1).unwrap());
+        let other = root.append(&mut arena, NonZeroUsize::new(2).unwrap());
+        let _ = root.insert_node_after(&mut arena, other);
+
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
+            .map(|x| x.data);
+        assert_eq!(iter.next(), NonZeroUsize::new(1));
+        assert_eq!(iter.next(), NonZeroUsize::new(2));
         assert!(iter.next().is_none());
     }
 
