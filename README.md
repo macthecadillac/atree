@@ -3,7 +3,7 @@
 ## Arena based tree structure with node removal support
 
 [![build](https://github.com/macthecadillac/atree/actions/workflows/ci.yml/badge.svg)](https://github.com/macthecadillac/atree/actions/workflows/ci.yml)
-[![coverage](https://coveralls.io/repos/github/macthecadillac/atree/badge.svg?branch=master)](https://coveralls.io/github/macthecadillac/atree)
+[![coverage](https://img.shields.io/coverallsCoverage/github/macthecadillac/atree.svg?&branch=master)](https://coveralls.io/github/macthecadillac/atree)
 [![crates.io](https://img.shields.io/crates/v/atree.svg)](https://crates.io/crates/atree)
 [![downloads](https://img.shields.io/crates/d/atree.svg)](https://crates.io/crates/atree)
 [![docs.rs](https://docs.rs/atree/badge.svg)](https://docs.rs/atree)
