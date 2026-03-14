@@ -72,7 +72,7 @@ impl Token {
             None => {
                 // children_mut will have checked indexability so this will not
                 // fail
-                arena[self].first_child = Some(new_node_token);
+                arena.get_mut(self).unwrap().first_child = Some(new_node_token);
                 None
             },
             Some(last_child) => {
@@ -129,7 +129,7 @@ impl Token {
             None => panic!("Invalid token"),
             Some(node) => (node.parent, node.previous_sibling)
         };
-        arena[self].previous_sibling = Some(new_node_token);  // already checked
+        arena.get_mut(self).unwrap().previous_sibling = Some(new_node_token);  // already checked
         let previous_sibling = match self_previous_sibling {
             Some(sibling) => match arena.get_mut(sibling) {
                 None => panic!("Corrupt arena"),
@@ -163,6 +163,8 @@ impl Token {
         new_node_token
     }
 
+    // TODO: move to arena since it doesn't exactly fit in NodeRefMut,
+    // "ideologically" speaking
     /// Set a node in the arena as the next sibling of the given node. Returns
     /// error if the "other node" is not a root node of a tree (as in it already
     /// has a parent and/or siblings).
@@ -293,7 +295,7 @@ impl Token {
             None => panic!("Invalid token"),
             Some(node) => (node.parent, node.next_sibling)
         };
-        arena[self].next_sibling = Some(new_node_token);  // already checked
+        arena.get_mut(self).unwrap().next_sibling = Some(new_node_token);  // already checked
         let next_sibling = match self_next_sibling {
             None => None,
             Some(sibling) => match arena.get_mut(sibling) {
@@ -530,7 +532,7 @@ impl Token {
         other_node.next_sibling = next_sibling;
         other_node.previous_sibling = previous_sibling;
 
-        let self_node = &mut arena[self];  // indexability has been checked
+        let self_node = &mut arena.get_mut(self).unwrap();  // indexability has been checked
         self_node.parent = None;
         self_node.previous_sibling = None;
         self_node.next_sibling = None;
@@ -1158,7 +1160,7 @@ impl Token {
                 token = t.unwrap();
                 branch = b;
             }
-            arena[self].first_child = None;
+            arena.get_mut(self).unwrap().first_child = None;
         }
     }
 }

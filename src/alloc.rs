@@ -7,22 +7,26 @@ use std::num::NonZeroUsize;
 use crate::token::Token;
 
 #[derive(Clone, Debug)]
+enum Cell<T> {
+    Just(T),
+    Nothing(Option<NonZeroUsize>)
+}
+
+impl<T> Default for Cell<T> {
+    fn default() -> Self { Cell::Nothing(None) }
+}
+
+#[derive(Clone, Debug)]
 pub struct Allocator<T> {
     data: Vec<Cell<T>>,
     head: Option<NonZeroUsize>,
     len: usize
 }
 
-#[derive(Clone, Debug)]
-enum Cell<T> {
-    Just(T),
-    Nothing(Option<NonZeroUsize>)
-}
-
 impl<T> Default for Allocator<T> {
     fn default() -> Self {
         Allocator {
-            data: vec![Cell::Nothing(None)],
+            data: vec![Cell::default()],
             head: Some(NonZeroUsize::new(1).unwrap()),
             len: 0
         }
@@ -32,7 +36,7 @@ impl<T> Default for Allocator<T> {
 impl<T> Allocator<T> {
     pub fn new() -> Self {
         Allocator {
-            data: vec![Cell::Nothing(None)],
+            data: vec![Cell::default()],
             head: Some(NonZeroUsize::new(1).unwrap()),
             len: 0
         }
@@ -84,7 +88,7 @@ impl<T> Allocator<T> {
         let new_cells = (head_indx.get()..)  // already bigger by 1
             .take(additional - 1)
             .map(|i| Cell::Nothing(Some(NonZeroUsize::new(i + 1).unwrap())))
-            .chain(std::iter::once(Cell::Nothing(None)));
+            .chain(std::iter::once(Cell::default()));
         self.data.extend(new_cells);
     }
 
@@ -137,10 +141,26 @@ impl<T> Allocator<T> {
         }
     }
 
+    // TODO: use unions when union with non-Copy types are available in stable
+    pub unsafe fn get_unchecked(&self, token: Token) -> &T {
+        match self.data.get_unchecked(token.index.get() - 1) {
+            Cell::Just(data) => data,
+            _ => panic!("Invalid cell")
+        }
+    }
+
     pub fn get_mut(&mut self, token: Token) -> Option<&mut T> {
         match self.data.get_mut(token.index.get() - 1) {  // zero-based index
             Some(Cell::Nothing(_)) | None => None,
             Some(Cell::Just(data)) => Some(data)
+        }
+    }
+
+    // TODO: use unions when union with non-Copy types are available in stable
+    pub unsafe fn get_unchecked_mut(&mut self, token: Token) -> &T {
+        match self.data.get_unchecked_mut(token.index.get() - 1) {
+            Cell::Just(data) => data,
+            _ => panic!("Invalid cell")
         }
     }
 }

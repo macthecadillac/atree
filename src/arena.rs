@@ -1,11 +1,13 @@
 #![allow(clippy::match_bool)]
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 use crate::alloc::Allocator;
 use crate::iter::{Branch, ChildrenTokens};
 use crate::node::Node;
+use crate::node_ref::NodeRef;
+// use crate::node_ref_mut::NodeRefMut;
 use crate::token::Token;
 
 /// A struct that provides the arena allocator.
@@ -131,6 +133,25 @@ impl<T> Arena<T> {
         self.allocator.get(indx)
     }
 
+    /// Gets a reference to a node in the arena.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Arena;
+    ///
+    /// let root_data = 1usize;
+    /// let (mut arena, root_token) = Arena::with_data(root_data);
+    /// let next_node_token = root_token.append(&mut arena, 2usize);
+    ///
+    /// // get the node we just inserted
+    /// let next_node = arena.get(next_node_token).unwrap();
+    /// assert_eq!(next_node.data, 2);
+    /// ```
+    pub unsafe fn get_unchecked(&self, indx: Token) -> &Node<T> {
+        self.allocator.get_unchecked(indx)
+    }
+
     /// Gets a mutable reference to a node in the arena.
     ///
     /// # Examples:
@@ -207,7 +228,7 @@ impl<T> Arena<T> {
             child.parent = None;
         }
         // should not fail because children_mut checks the validity of token
-        let first_child = self[token].first_child;
+        let first_child = self.get_mut(token).unwrap().first_child();
         self.allocator.remove(token);
         let iter = ChildrenTokens { arena: self, node_token: first_child };
         iter.collect()
@@ -376,10 +397,10 @@ impl<T> Arena<T> where T: Clone {
 
                 loop {
                     let &token = stack.last().unwrap(); // never fails
-                    let node = &other_tree[token];  // already checked
+                    let node = &other_tree.get(token).unwrap();  // already checked
                     match branch {
                         Branch::None => (),  // unreachable
-                        Branch::Child => match node.first_child {
+                        Branch::Child => match node.first_child() {
                             None => branch = Branch::Sibling,
                             Some(child) => {
                                 let child_data = match other_tree.get(child) {
@@ -395,7 +416,7 @@ impl<T> Arena<T> where T: Clone {
                         },
                         Branch::Sibling => match Some(other_token) == stack.pop() {
                             true => break,
-                            false => match node.next_sibling {
+                            false => match node.next_sibling() {
                                 None => (),
                                 Some(sibling) => {
                                     stack.push(sibling);
@@ -410,21 +431,28 @@ impl<T> Arena<T> where T: Clone {
     }
 }
 
-impl<T> Index<Token> for Arena<T> {
-    type Output = Node<T>;
-    fn index(&self, index: Token) -> &Self::Output {
-        match self.get(index) {
-            Some(node) => node,
-            None => panic!("Invalid token")
-        }
-    }
-}
+// // TODO: see if we can remove the double references
+// impl<'a, T> Index<Token> for &'a Arena<T> {
+//     type Output = NodeRef<'a, T>;
+//     fn index(&self, index: Token) -> &Self::Output {
+//         match self.get(index) {
+//             None => panic!("Invalid token"),
+//             Some(_) => &NodeRef {
+//                 token: index,
+//                 tree: self
+//             }
+//         }
+//     }
+// }
 
-impl<T> IndexMut<Token> for Arena<T> {
-    fn index_mut(&mut self, index: Token) -> &mut Self::Output {
-        match self.get_mut(index) {
-            Some(node) => node,
-            None => panic!("Invalid token")
-        }
-    }
-}
+// impl<'a, T> IndexMut<Token> for &'a Arena<T> {
+//     fn index_mut(&mut self, index: Token) -> &Self::Output {
+//         match self.get_mut(index) {
+//             None => panic!("Invalid token"),
+//             Some(node) => &mut NodeRefMut {
+//                 token: index,
+//                 tree: self
+//             }
+//         }
+//     }
+// }
