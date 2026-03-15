@@ -464,3 +464,70 @@ iterator!(@mut struct PrecedingSiblingsMut > previous_sibling);
 iterator!(@mut struct FollowingSiblingsMut > next_sibling);
 iterator!(@mut struct ChildrenMut > next_sibling);
 iterator!(@mut struct AncestorsMut > parent);
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Arena;
+
+    #[test]
+    fn subtree_mut_returns_none_when_exhausted() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        root.append(&mut arena, 2usize);
+        let mut iter = root.subtree_mut(&mut arena, TraversalOrder::Pre);
+        // consume all items
+        while iter.next().is_some() {}
+        // further calls should return None
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn ancestors_of_root_is_empty() {
+        let (arena, root) = Arena::with_data(1usize);
+        let mut ancestors = root.ancestors_tokens(&arena);
+        assert!(ancestors.next().is_none());
+    }
+
+    #[test]
+    fn children_of_leaf_is_empty() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        let leaf = root.append(&mut arena, 2usize);
+        let mut children = leaf.children_tokens(&arena);
+        assert!(children.next().is_none());
+    }
+
+    #[test]
+    fn following_siblings_of_last_is_empty() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        root.append(&mut arena, 2usize);
+        let last = root.append(&mut arena, 3usize);
+        let mut siblings = last.following_siblings_tokens(&arena);
+        assert!(siblings.next().is_none());
+    }
+
+    #[test]
+    fn preceding_siblings_of_first_is_empty() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        let first = root.append(&mut arena, 2usize);
+        root.append(&mut arena, 3usize);
+        let mut siblings = first.preceding_siblings_tokens(&arena);
+        assert!(siblings.next().is_none());
+    }
+
+    #[test]
+    fn breadth_first_level_swap_covered() {
+        // Build a tree with 2 levels so breadth-first hits the level-swap branch
+        let (mut arena, root) = Arena::with_data(1usize);
+        let c1 = root.append(&mut arena, 2usize);
+        let c2 = root.append(&mut arena, 3usize);
+        c1.append(&mut arena, 4usize);
+        c2.append(&mut arena, 5usize);
+
+        let tokens: Vec<_> = root.subtree_tokens(&arena, TraversalOrder::Level).collect();
+        assert_eq!(tokens[0], root);
+        assert_eq!(tokens[1], c1);
+        assert_eq!(tokens[2], c2);
+        // grandchildren follow after level swap
+        assert_eq!(tokens.len(), 5);
+    }
+}

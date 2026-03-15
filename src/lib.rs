@@ -212,7 +212,8 @@
 #[cfg(feature = "serde")]
 extern crate serde;
 
-mod alloc;
+#[doc(hidden)]
+pub mod alloc;
 mod arena;
 pub mod iter;
 mod node;

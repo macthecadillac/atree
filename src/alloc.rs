@@ -149,3 +149,84 @@ impl<T> Allocator<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn default_creates_valid_allocator() {
+        let alloc: Allocator<usize> = Allocator::default();
+        assert_eq!(alloc.len(), 0);
+        assert!(alloc.is_empty());
+        assert!(alloc.capacity() > 0);
+    }
+
+    #[test]
+    fn capacity_returns_correct_value() {
+        let alloc: Allocator<usize> = Allocator::new();
+        assert_eq!(alloc.capacity(), alloc.data.len());
+    }
+
+    #[test]
+    fn is_valid_token_true_and_false() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        let token = alloc.insert(42);
+        assert!(alloc.is_valid_token(token));
+
+        alloc.remove(token);
+        assert!(!alloc.is_valid_token(token));
+    }
+
+    #[test]
+    fn get_returns_none_for_free_slot() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        let token = alloc.insert(99);
+        alloc.remove(token);
+        assert!(alloc.get(token).is_none());
+    }
+
+    #[test]
+    fn get_mut_returns_none_for_free_slot() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        let token = alloc.insert(99);
+        alloc.remove(token);
+        assert!(alloc.get_mut(token).is_none());
+    }
+
+    #[test]
+    fn reserve_extends_capacity() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        let initial_capacity = alloc.capacity();
+        alloc.reserve(8);
+        assert!(alloc.capacity() >= initial_capacity + 8);
+    }
+
+    #[test]
+    fn insert_after_exhaustion_triggers_reserve() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        // Fill until the allocator must grow
+        let initial_capacity = alloc.capacity();
+        for i in 0..initial_capacity {
+            alloc.insert(i);
+        }
+        // This insert should trigger reserve internally
+        let token = alloc.insert(999);
+        assert!(alloc.is_valid_token(token));
+        assert_eq!(*alloc.get(token).unwrap(), 999);
+    }
+
+    #[test]
+    fn head_when_full_triggers_reserve() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        let capacity = alloc.capacity();
+        for i in 0..capacity {
+            alloc.insert(i);
+        }
+        // head() when allocator is full should call reserve and return a valid token
+        let token = alloc.head();
+        assert!(alloc.capacity() > capacity);
+        // head token should be a free slot pointing to a Nothing cell
+        assert!(alloc.get(token).is_none());
+    }
+}

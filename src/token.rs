@@ -1438,4 +1438,94 @@ mod test {
         println!("{:?}", arena.allocator);
         assert_eq!(arena.node_count(), 5);
     }
+
+    #[test]
+    fn is_leaf_true() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        let child = root.append(&mut arena, 2usize);
+        assert!(child.is_leaf(&arena));
+    }
+
+    #[test]
+    fn is_leaf_false() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        root.append(&mut arena, 2usize);
+        assert!(!root.is_leaf(&arena));
+    }
+
+    #[test]
+    fn replace_node_error_not_a_root_node() {
+        let (mut arena, root) = Arena::with_data(1usize);
+        let child = root.append(&mut arena, 2usize);
+        let sibling = root.append(&mut arena, 3usize);
+        // `child` already has a parent, so it's not a root node
+        let result = sibling.replace_node(&mut arena, child);
+        assert!(matches!(result, Err(Error::NotARootNode)));
+    }
+
+    #[test]
+    fn insert_before_first_child_updates_parent_first_child() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        // insert before a, which is the first child
+        let new_first = a.insert_before(&mut arena, 99usize);
+        // root's first_child should now point to new_first
+        assert_eq!(arena[root].first_child, Some(new_first));
+        // new_first's next_sibling should be a
+        assert_eq!(arena[new_first].next_sibling, Some(a));
+        // a's previous_sibling should be new_first
+        assert_eq!(arena[a].previous_sibling, Some(new_first));
+    }
+
+    #[test]
+    fn insert_after_with_next_sibling_updates_sibling_chain() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+        // insert after a, which already has b as next sibling
+        let mid = a.insert_after(&mut arena, 99usize);
+        // a -> mid -> b
+        assert_eq!(arena[a].next_sibling, Some(mid));
+        assert_eq!(arena[mid].next_sibling, Some(b));
+        assert_eq!(arena[b].previous_sibling, Some(mid));
+    }
+
+    #[test]
+    fn detach_middle_child_relinks_neighbors() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+        let c = root.append(&mut arena, 3usize);
+
+        b.detach(&mut arena);
+
+        assert_eq!(arena[a].next_sibling, Some(c));
+        assert_eq!(arena[c].previous_sibling, Some(a));
+        assert!(arena[b].parent.is_none());
+    }
+
+    #[test]
+    fn detach_last_child() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+
+        b.detach(&mut arena);
+
+        assert!(arena[a].next_sibling.is_none());
+        assert!(arena[b].parent.is_none());
+    }
+
+    #[test]
+    fn detach_first_child_with_siblings_updates_parent_first_child() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+
+        a.detach(&mut arena);
+
+        assert_eq!(arena[root].first_child, Some(b));
+        assert!(arena[b].previous_sibling.is_none());
+        assert!(arena[a].parent.is_none());
+    }
 }

@@ -58,6 +58,21 @@ impl<T> Arena<T> {
     pub fn node_count(&self) -> usize { self.allocator.len() }
 
     /// Returns the number of nodes the tree can hold without reallocating.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Arena;
+    ///
+    /// let (mut arena, root_token) = Arena::with_data(1usize);
+    /// let initial_capacity = arena.capacity();
+    ///
+    /// // capacity grows as nodes are added beyond initial allocation
+    /// for i in 0..100 {
+    ///     root_token.append(&mut arena, i);
+    /// }
+    /// assert!(arena.capacity() >= initial_capacity);
+    /// ```
     pub fn capacity(&self) -> usize { self.allocator.capacity() }
 
 
@@ -241,42 +256,51 @@ impl<T> Arena<T> {
     /// let mut iter = root_token.subtree_tokens(&arena, TraversalOrder::Pre);
     /// assert_eq!(iter.next(), Some(root_token));
     /// assert!(iter.next().is_none());
-    /// assert_eq!(arena.node_count(), 1);  // only the root node is left
+    /// // only one node is left
+    /// assert_eq!(arena.node_count(), 1);
+    /// // the node left is the root node
+    /// assert_eq!(arena[root_token].data, root_data);
     /// ```
     ///
     /// [`remove`]: struct.Arena.html#method.remove
     pub fn uproot(&mut self, token: Token) {
         token.remove_descendants(self);
         match self.allocator.remove(token) {
-            None => panic!("Invalid token"),
+            None => panic!("Impossible branch. Token was referenced in the previous line."),
             Some(node) => match (node.parent, node.previous_sibling,
                                  node.next_sibling) {
                 (Some(_), Some(otkn), Some(ytkn)) => {
                     match self.get_mut(otkn) {
                         Some(o) => o.next_sibling = Some(ytkn),
-                        None => panic!("Corrupt arena")
+                        None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                     }
                     match self.get_mut(ytkn) {
                         Some(y) => y.previous_sibling = Some(otkn),
-                        None => panic!("Corrupt arena")
+                        None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                     }
                 },
                 (Some(_), Some(otkn), None) => match self.get_mut(otkn) {
                     Some(o) => o.next_sibling = None,
-                    None => panic!("Corrupt arena")
+                    None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                 },
-                (Some(ptkn), None, Some(ytkn)) => match self.get_mut(ptkn) {
-                    Some(p) => p.first_child = Some(ytkn),
-                    None => panic!("Corrupt arena")
+                (Some(ptkn), None, Some(ytkn)) => {
+                    match self.get_mut(ptkn) {
+                        Some(p) => p.first_child = Some(ytkn),
+                        None => panic!("Impossible branch. A root node cannot have siblings. Corrupt arena")
+                    };
+                    match self.get_mut(ytkn) {
+                        Some(o) => o.previous_sibling = None,
+                        None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
+                    };
                 },
                 (Some(ptkn), None, None) => match self.get_mut(ptkn) {
                     Some(p) => p.first_child = None,
-                    None => panic!("Corrupt arena")
+                    None => panic!("Impossible branch. Parent of non-root node not found. Corrupt arena")
                 },
                 (None, None, None) => (),  // empty tree
                 (None, None, Some(_))
                     | (None, Some(_), None)
-                    | (None, Some(_), Some(_)) => panic!("Corrupt arena")
+                    | (None, Some(_), Some(_)) => panic!("Impossible branches. Corrupt arena")
             }
         }
     }
@@ -350,20 +374,28 @@ impl<T> Arena<T> where T: Clone {
     /// let node1 = root_token.append(&mut arena1, "Juan");
     /// let node2 = root_token.append(&mut arena1, "Giovanni");
     /// let grandchild1 = node1.append(&mut arena1, "Ivan");
-    /// let grandchild2 = node2.append(&mut arena1, "Johann");
+    /// let grandchild2 = node1.append(&mut arena1, "Sean");
+    /// let grandchild3 = node2.append(&mut arena1, "Johann");
+    /// let grandchild4 = node2.append(&mut arena1, "Jan");
     ///
     /// // new arena
     /// let mut arena2 = arena1.clone();
     ///
     /// // append "node1" from tree2 under "node2" in tree1
     /// arena1.copy_and_append_subtree(node2, &arena2, node1);
-    /// let mut subtree = node2.subtree(&arena1, TraversalOrder::Pre);
     ///
+    /// let mut node2_children = node2.children(&arena1).map(|t| t.data);
+    /// assert_eq!(node2_children.next(), Some("Johann"));
+    /// assert_eq!(node2_children.next(), Some("Jan"));
+    /// assert_eq!(node2_children.next(), Some("Juan"));
+    /// assert!(node2_children.next().is_none());
+    ///
+    /// let mut subtree = node2.subtree(&arena1, TraversalOrder::Pre);
     /// assert_eq!(subtree.next().unwrap().data, "Giovanni");
     /// assert_eq!(subtree.next().unwrap().data, "Johann");
-    /// assert_eq!(subtree.next().unwrap().data, "Juan");
-    /// assert_eq!(subtree.next().unwrap().data, "Ivan");
-    /// assert!(subtree.next().is_none());
+    /// assert_eq!(subtree.next().unwrap().data, "Jan");
+    /// let mut tree2 = node1.subtree(&arena2, TraversalOrder::Pre);
+    /// assert!(subtree.zip(tree2).all(|(a, b)| a.data == b.data));
     /// ```
     pub fn copy_and_append_subtree(&mut self, self_token: Token,
                                    other_tree: &Arena<T>, other_token: Token) {
@@ -378,7 +410,7 @@ impl<T> Arena<T> where T: Clone {
                 let mut branch = Branch::Child;
 
                 loop {
-                    let &token = stack.last().unwrap(); // never fails
+                    let &token = stack.last().expect("Stack should never be empty");
                     let node = &other_tree[token];  // already checked
                     match branch {
                         Branch::None => (),  // unreachable
@@ -401,6 +433,14 @@ impl<T> Arena<T> where T: Clone {
                             false => match node.next_sibling {
                                 None => (),
                                 Some(sibling) => {
+                                    let sibling_data = match other_tree.get(sibling) {
+                                        Some(n) => n.data.clone(),
+                                        None => panic!("Corrupt arena")
+                                    };
+                                    let parent_token = node.parent.expect("Corrupt arena");
+                                    let new_parent = index_map[&parent_token];
+                                    let new_sibling_token = new_parent.append(self, sibling_data);
+                                    index_map.insert(sibling, new_sibling_token);
                                     stack.push(sibling);
                                     branch = Branch::Child;
                                 }
@@ -410,6 +450,89 @@ impl<T> Arena<T> where T: Clone {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn uproot_middle_child() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+        let c = root.append(&mut arena, 3usize);
+
+        arena.uproot(b);
+
+        assert_eq!(arena.node_count(), 3);
+        // a's next sibling should be c
+        assert_eq!(arena[a].next_sibling, Some(c));
+        // c's previous sibling should be a
+        assert_eq!(arena[c].previous_sibling, Some(a));
+    }
+
+    #[test]
+    fn uproot_last_child() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+
+        arena.uproot(b);
+
+        assert_eq!(arena.node_count(), 2);
+        assert!(arena[a].next_sibling.is_none());
+    }
+
+    #[test]
+    fn uproot_first_child_with_siblings() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+
+        arena.uproot(a);
+
+        assert_eq!(arena.node_count(), 2);
+        // root's first_child should now be b
+        assert_eq!(arena[root].first_child, Some(b));
+        assert!(arena[b].previous_sibling.is_none());
+        // uproot only updates parent's first_child, not b's previous_sibling
+        // so b.parent is intact
+        assert_eq!(arena[b].parent, Some(root));
+    }
+
+    #[test]
+    fn uproot_root_node() {
+        let (mut arena, root) = Arena::with_data(42usize);
+        arena.uproot(root);
+        assert_eq!(arena.node_count(), 0);
+        assert!(arena.is_empty());
+    }
+
+    #[test]
+    fn copy_and_append_subtree_with_siblings_2() {
+        // Source tree: root1 -> [node1 -> [grandchild1, grandchild2], node2]
+        let (mut arena1, root1) = Arena::with_data("root");
+        let node1 = root1.append(&mut arena1, "node1");
+        node1.append(&mut arena1, "gc1");
+        node1.append(&mut arena1, "gc2");
+        root1.append(&mut arena1, "node2");
+
+        let (mut arena2, root2) = Arena::with_data("root2");
+        // copy node1's subtree (which has siblings gc1, gc2) into arena2
+        arena2.copy_and_append_subtree(root2, &arena1, node1);
+
+        // root2 should now have node1 as a child with gc1 and gc2 as grandchildren
+        let children: Vec<_> = root2.children_tokens(&arena2).collect();
+        assert_eq!(children.len(), 1);
+        let copied_node1 = children[0];
+        assert_eq!(arena2[copied_node1].data, "node1");
+
+        let grandchildren: Vec<_> = copied_node1.children_tokens(&arena2).collect();
+        assert_eq!(grandchildren.len(), 2);
+        assert_eq!(arena2[grandchildren[0]].data, "gc1");
+        assert_eq!(arena2[grandchildren[1]].data, "gc2");
     }
 }
 

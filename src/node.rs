@@ -132,7 +132,7 @@ impl<T> Node<T> {
     /// let fourth_child_token = root_token.append(&mut arena, "Hellenic");
     ///
     /// let root = &arena[root_token];
-    /// let mut children_tokens = root_token.children_tokens(&arena);
+    /// let mut children_tokens = root.children_tokens(&arena);
     /// assert_eq!(children_tokens.next(), Some(first_child_token));
     /// assert_eq!(children_tokens.next(), Some(second_child_token));
     /// assert_eq!(children_tokens.next(), Some(third_child_token));
@@ -186,7 +186,7 @@ impl<T> Node<T> {
     /// root_token.append(&mut arena, "Hellenic");
     ///
     /// let second_child = &arena[second_child_token];
-    /// let mut siblings = second_child_token.following_siblings(&arena);
+    /// let mut siblings = second_child.following_siblings(&arena);
     /// assert_eq!(siblings.next().unwrap().data, "Slavic");
     /// assert_eq!(siblings.next().unwrap().data, "Hellenic");
     /// assert!(siblings.next().is_none());
