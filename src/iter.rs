@@ -46,9 +46,11 @@ pub (crate) fn preorder_next<T>(mut node_token: Token,
     loop {
         let node = match arena.get(node_token) {
             Some(n) => n,
+            // Dead code: token pre-validated by depth_first_tokens_next
             None => panic!("Invalid token")
         };
         match branch {
+            // Dead code: unreachable by construction
             Branch::None => panic!("Unreachable arm. Check code."),  // unreachable
             Branch::Child => match node.first_child {
                 Some(token) => break (Some(token), Branch::Child),
@@ -60,6 +62,7 @@ pub (crate) fn preorder_next<T>(mut node_token: Token,
             Branch::Sibling => match node.next_sibling {
                 Some(token) => break (Some(token), Branch::Child),
                 None => match node.parent {
+                    // Dead code: parent == root check fires first
                     None => break (None, Branch::None),
                     Some(parent) => match parent == root {
                         true => break (None, Branch::None),
@@ -87,9 +90,11 @@ pub (crate) fn postorder_next<T>(mut node_token: Token,
     loop {
         let node = match arena.get(node_token) {
             Some(n) => n,
+            // Dead code: token pre-validated by depth_first_tokens_next
             None => panic!("Invalid token")
         };
         match branch {
+            // Dead code: postorder iterator stops before calling with Branch::None
             Branch::None => break (None, Branch::None),
             Branch::Child => match node.first_child {
                 Some(token) => {
@@ -111,6 +116,7 @@ pub (crate) fn postorder_next<T>(mut node_token: Token,
                     branch = Branch::Child;
                 },
                 None => match node.parent {
+                    // Dead code: parent == root check fires first
                     None => break (None, Branch::Child),
                     Some(parent) => match parent == root {
                         true => break (Some(root), Branch::None),
@@ -136,6 +142,7 @@ pub (crate) fn depth_first_tokens_next<'a, T>(
     match iter.node_token {
         None => None,
         Some(token) => match iter.arena.get(token) {
+            // Dead code: token produced by prior traversal on live arena
             None => panic!("Stale token: {:?} is not found in \
                             the arena. Check code", token),
             Some(_) => {
@@ -240,6 +247,7 @@ impl<'a, T> Iterator for SubtreeMut<'a, T> {
                 let arena = unsafe { self.arena.as_mut().unwrap() };
                 match arena.get_mut(node_token) {
                     Some(node) => Some(node),
+                    // Dead code: token produced by live SubtreeTokens iterator
                     None => None
                 }
             }
@@ -400,6 +408,7 @@ macro_rules! iterator {
                 match self.node_token {
                     None => None,
                     Some(token) => match self.arena.get(token) {
+                        // Dead code: token produced by prior traversal on live arena
                         None => panic!("Stale token: {:?} is not found in \
                                         the arena. Check code", token),
                         Some(curr_node) => {
@@ -512,6 +521,18 @@ mod test {
         root.append(&mut arena, 3usize);
         let mut siblings = first.preceding_siblings_tokens(&arena);
         assert!(siblings.next().is_none());
+    }
+
+    #[test]
+    fn postorder_ancestor_return_path() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = a.append(&mut arena, 2usize);
+        let c = b.append(&mut arena, 3usize);
+        let d = root.append(&mut arena, 4usize);
+
+        let result: Vec<_> = root.subtree_tokens(&arena, TraversalOrder::Post).collect();
+        assert_eq!(result, vec![c, b, a, d, root]);
     }
 
     #[test]

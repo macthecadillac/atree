@@ -43,6 +43,7 @@ impl Token {
     /// Panics if the token does not correspond to a node in the arena.
     pub fn is_leaf<T>(self, arena: &Arena<T>) -> bool {
         match arena.get(self) {
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token"),
             Some(node) => node.is_leaf()
         }
@@ -131,12 +132,14 @@ impl Token {
     pub fn insert_before<T>(self, arena: &mut Arena<T>, data: T) -> Token {
         let new_node_token = arena.allocator.head();
         let (self_parent, self_previous_sibling) = match arena.get(self) {
+            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
             Some(node) => (node.parent, node.previous_sibling)
         };
         arena[self].previous_sibling = Some(new_node_token);  // already checked
         let previous_sibling = match self_previous_sibling {
             Some(sibling) => match arena.get_mut(sibling) {
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(ref mut node) => {
                     node.next_sibling = Some(new_node_token);
@@ -147,6 +150,7 @@ impl Token {
                 None => panic!("Cannot insert as the previous sibling of the \
                                 root node"),
                 Some(p) => match arena.get_mut(p) {
+                    // Dead code: corrupt-arena sentinel; unreachable via public API
                     None => panic!("Corrupt arena"),
                     Some(ref mut node) => {
                         node.first_child = Some(new_node_token);
@@ -295,6 +299,7 @@ impl Token {
     pub fn insert_after<T>(self, arena: &mut Arena<T>, data: T) -> Token {
         let new_node_token = arena.allocator.head();
         let (self_parent, self_next_sibling) = match arena.get(self) {
+            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
             Some(node) => (node.parent, node.next_sibling)
         };
@@ -302,6 +307,7 @@ impl Token {
         let next_sibling = match self_next_sibling {
             None => None,
             Some(sibling) => match arena.get_mut(sibling) {
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(ref mut node) => {
                     node.previous_sibling = Some(new_node_token);
@@ -423,6 +429,7 @@ impl Token {
     /// [`split_at`]: struct.Arena.html#method.split_at
     pub fn detach<T>(self, arena: &mut Arena<T>) {
         let (parent, previous_sibling, next_sibling) = match arena.get_mut(self) {
+            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
             Some(node) => {
                 let parent = node.parent;
@@ -437,11 +444,13 @@ impl Token {
 
         match previous_sibling {
             Some(token) => match arena.get_mut(token) {
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(node) => node.next_sibling = next_sibling
             },
             None => if let Some(token) = parent {
                 match arena.get_mut(token) {
+                    // Dead code: corrupt-arena sentinel; unreachable via public API
                     None => panic!("Corrupt arena"),
                     Some(n) => n.first_child = next_sibling
                 }
@@ -450,6 +459,7 @@ impl Token {
 
         if let Some(token) = next_sibling {
             match arena.get_mut(token) {
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(node) => node.previous_sibling = previous_sibling
             }
@@ -510,6 +520,7 @@ impl Token {
     pub fn replace_node<T>(self, arena: &mut Arena<T>, other: Token)
         -> Result<(), Error> {
         let self_node = match arena.get(self) {
+            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
             Some(n) => n
         };
@@ -518,6 +529,7 @@ impl Token {
         let next_sibling = self_node.next_sibling;
 
         let other_node = match arena.get_mut(other) {
+            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
             Some(n) => n
         };
@@ -543,11 +555,13 @@ impl Token {
         // update previous_sibling, next_sibling and parent of the self node
         match previous_sibling {
             Some(sibling) => match arena.get_mut(sibling) {
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(node) => node.next_sibling = Some(other)
             },
             None => if let Some(p) = parent {
                 match arena.get_mut(p) {
+                    // Dead code: corrupt-arena sentinel; unreachable via public API
                     None => panic!("Corrupt arena"),
                     Some(node) => node.first_child = Some(other)
                 }
@@ -556,6 +570,7 @@ impl Token {
 
         if let Some(sibling) = next_sibling {
             match arena.get_mut(sibling) {
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(node) => node.previous_sibling = Some(other)
             }
@@ -590,6 +605,7 @@ impl Token {
         -> AncestorTokens<'a, T> {
         let parent = match arena.get(self) {
             Some(n) => n.parent,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         AncestorTokens { arena, node_token: parent }
@@ -623,6 +639,7 @@ impl Token {
         -> PrecedingSiblingTokens<'a, T> {
         let previous_sibling = match arena.get(self) {
             Some(n) => n.previous_sibling,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         PrecedingSiblingTokens { arena, node_token: previous_sibling }
@@ -656,6 +673,7 @@ impl Token {
         -> FollowingSiblingTokens<'a, T> {
         let next_sibling = match arena.get(self) {
             Some(n) => n.next_sibling,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         FollowingSiblingTokens { arena, node_token: next_sibling }
@@ -691,6 +709,7 @@ impl Token {
         -> ChildrenTokens<'a, T> {
         let first_child = match arena.get(self) {
             Some(n) => n.first_child,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         ChildrenTokens { arena, node_token: first_child }
@@ -886,6 +905,7 @@ impl Token {
         -> FollowingSiblingsMut<'a, T> {
         let next_sibling = match arena.get(self) {
             Some(n) => n.next_sibling,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         FollowingSiblingsMut {
@@ -930,6 +950,7 @@ impl Token {
         -> PrecedingSiblingsMut<'a, T> {
         let previous_sibling = match arena.get(self) {
             Some(n) => n.previous_sibling,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         PrecedingSiblingsMut {
@@ -976,6 +997,7 @@ impl Token {
         -> ChildrenMut<'a, T> {
         let first_child = match arena.get(self) {
             Some(n) => n.first_child,
+            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         };
         ChildrenMut {

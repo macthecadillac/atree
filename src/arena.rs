@@ -20,6 +20,16 @@ pub struct Arena<T> {
 
 impl<T> Arena<T> {
     /// Initializes a new `Arena<T>`.
+    ///
+    /// # Examples:
+    ///
+    /// ```
+    /// use atree::Arena;
+    ///
+    /// let arena = Arena::<usize>::new();
+    /// assert!(arena.is_empty());
+    /// assert_eq!(arena.node_count(), 0);
+    /// ```
     pub fn new() -> Self { Arena { allocator: Allocator::new() } }
 
     /// Returns true if the arena is empty.
@@ -171,9 +181,10 @@ impl<T> Arena<T> {
 
     /// Sets data to node.
     pub (crate) fn set(&mut self, indx: Token, node: Node<T>) {
-        if let Some(mut n) = self.allocator.set(indx, node) {
-            n.remove_descendants(self)
+        if self.get(indx).is_some() {
+            indx.remove_descendants(self);
         }
+        self.allocator.set(indx, node);
     }
 
     /// Removes the given node from the arena and returns the tokens of its
@@ -266,38 +277,46 @@ impl<T> Arena<T> {
     pub fn uproot(&mut self, token: Token) {
         token.remove_descendants(self);
         match self.allocator.remove(token) {
+            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Impossible branch. Token was referenced in the previous line."),
             Some(node) => match (node.parent, node.previous_sibling,
                                  node.next_sibling) {
                 (Some(_), Some(otkn), Some(ytkn)) => {
                     match self.get_mut(otkn) {
                         Some(o) => o.next_sibling = Some(ytkn),
+                        // Dead code: corrupt-arena sentinel; unreachable via public API
                         None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                     }
                     match self.get_mut(ytkn) {
                         Some(y) => y.previous_sibling = Some(otkn),
+                        // Dead code: corrupt-arena sentinel; unreachable via public API
                         None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                     }
                 },
                 (Some(_), Some(otkn), None) => match self.get_mut(otkn) {
                     Some(o) => o.next_sibling = None,
+                    // Dead code: corrupt-arena sentinel; unreachable via public API
                     None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                 },
                 (Some(ptkn), None, Some(ytkn)) => {
                     match self.get_mut(ptkn) {
                         Some(p) => p.first_child = Some(ytkn),
+                        // Dead code: corrupt-arena sentinel; unreachable via public API
                         None => panic!("Impossible branch. A root node cannot have siblings. Corrupt arena")
                     };
                     match self.get_mut(ytkn) {
                         Some(o) => o.previous_sibling = None,
+                        // Dead code: corrupt-arena sentinel; unreachable via public API
                         None => panic!("Impossible branch. Referencing dangling token. Corrupt arena")
                     };
                 },
                 (Some(ptkn), None, None) => match self.get_mut(ptkn) {
                     Some(p) => p.first_child = None,
+                    // Dead code: corrupt-arena sentinel; unreachable via public API
                     None => panic!("Impossible branch. Parent of non-root node not found. Corrupt arena")
                 },
                 (None, None, None) => (),  // empty tree
+                // Dead code: corrupt-arena sentinel; unreachable via public API
                 (None, None, Some(_))
                     | (None, Some(_), None)
                     | (None, Some(_), Some(_)) => panic!("Impossible branches. Corrupt arena")
@@ -458,6 +477,53 @@ mod test {
     use super::*;
 
     #[test]
+    fn set_overwrites_node_data() {
+        use crate::node::Node;
+        let (mut arena, root) = Arena::with_data(0usize);
+        let child = root.append(&mut arena, 1usize);
+        assert_eq!(arena.node_count(), 2);
+
+        // Replace `child` with a new node via the internal set() method
+        let replacement = Node {
+            data: 99usize,
+            token: child,
+            parent: Some(root),
+            previous_sibling: None,
+            next_sibling: None,
+            first_child: None,
+        };
+        arena.set(child, replacement);
+
+        // Node data is overwritten
+        assert_eq!(arena[child].data, 99usize);
+        assert_eq!(arena.node_count(), 2);
+    }
+
+    #[test]
+    fn set_overwrites_node_removing_descendants() {
+        use crate::node::Node;
+        let (mut arena, root) = Arena::with_data(0usize);
+        let child = root.append(&mut arena, 1usize);
+        child.append(&mut arena, 2usize);  // grandchild
+        assert_eq!(arena.node_count(), 3);
+
+        // Replace `child` with a childless node via the internal set() method
+        let replacement = Node {
+            data: 99usize,
+            token: child,
+            parent: Some(root),
+            previous_sibling: None,
+            next_sibling: None,
+            first_child: None,
+        };
+        arena.set(child, replacement);
+
+        // Grandchild should have been freed — node count drops from 3 to 2
+        assert_eq!(arena.node_count(), 2);
+        assert_eq!(arena[child].data, 99usize);
+    }
+
+    #[test]
     fn uproot_middle_child() {
         let (mut arena, root) = Arena::with_data(0usize);
         let a = root.append(&mut arena, 1usize);
@@ -541,6 +607,7 @@ impl<T> Index<Token> for Arena<T> {
     fn index(&self, index: Token) -> &Self::Output {
         match self.get(index) {
             Some(node) => node,
+            // Dead code: intentional documented panic; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         }
     }
@@ -550,6 +617,7 @@ impl<T> IndexMut<Token> for Arena<T> {
     fn index_mut(&mut self, index: Token) -> &mut Self::Output {
         match self.get_mut(index) {
             Some(node) => node,
+            // Dead code: intentional documented panic; not reachable without a stale/invalid token
             None => panic!("Invalid token")
         }
     }

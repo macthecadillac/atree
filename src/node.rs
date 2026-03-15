@@ -324,10 +324,6 @@ impl<T> Node<T> {
         -> Subtree<'a, T> {
         self.token.subtree(arena, order)
     }
-
-    pub (crate) fn remove_descendants(&mut self, arena: &mut Arena<T>) {
-        self.token.remove_descendants(arena)
-    }
 }
 
 #[cfg(test)]

@@ -290,6 +290,17 @@ mod test {
     }
 
     #[test]
+    fn find_last_available_recursive_case() {
+        let mut alloc: Allocator<usize> = Allocator::new();
+        alloc.reserve(2);
+        alloc.reserve(1);
+        assert!(alloc.capacity() >= 4);
+        assert_eq!(alloc.len(), 0);
+        let t = alloc.insert(42);
+        assert_eq!(*alloc.get(t).unwrap(), 42);
+    }
+
+    #[test]
     fn head_when_full_triggers_reserve() {
         let mut alloc: Allocator<usize> = Allocator::new();
         let capacity = alloc.capacity();
