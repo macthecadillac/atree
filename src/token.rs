@@ -2,37 +2,20 @@
 use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
-use std::mem::MaybeUninit;
 
 #[cfg(feature = "serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::Error;
+use crate::arena::Arena;
 use crate::iter::*;
 use crate::node::Node;
-use crate::arena::Arena;
+use crate::Error;
 
 /// A `Token` is a handle to a node in the arena.
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Token {
-    pub (crate) index: NonZeroUsize
-}
-
-#[allow(clippy::uninit_assumed_init)]
-fn node_operation<T>(
-    self_token: Token,
-    arena: &mut Arena<T>,
-    other_token: Token,
-    func: fn(Token, &mut Arena<T>, T) -> Token
-) -> Result<(), Error> {
-    // only a placeholder to get around some trait requirements so I can
-    // reuse code. The uninitialized data will be removed so no risk here.
-    let dummy_data: T = unsafe { MaybeUninit::uninit().assume_init() };
-    let token = func(self_token, arena, dummy_data);
-    token.replace_node(arena, other_token)?;
-    arena.remove(token);  // remove uninitialized data
-    Ok(())
+    pub(crate) index: NonZeroUsize,
 }
 
 impl Token {
@@ -43,9 +26,8 @@ impl Token {
     /// Panics if the token does not correspond to a node in the arena.
     pub fn is_leaf<T>(self, arena: &Arena<T>) -> bool {
         match arena.get(self) {
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
             None => panic!("Invalid token"),
-            Some(node) => node.is_leaf()
+            Some(node) => node.is_leaf(),
         }
     }
 
@@ -80,7 +62,7 @@ impl Token {
                 // fail
                 arena[self].first_child = Some(new_node_token);
                 None
-            },
+            }
             Some(last_child) => {
                 last_child.next_sibling = Some(new_node_token);
                 Some(last_child.token)
@@ -93,7 +75,7 @@ impl Token {
             parent: Some(self),
             previous_sibling,
             next_sibling: None,
-            first_child: None
+            first_child: None,
         };
         arena.set(new_node_token, node);
         new_node_token
@@ -132,14 +114,12 @@ impl Token {
     pub fn insert_before<T>(self, arena: &mut Arena<T>, data: T) -> Token {
         let new_node_token = arena.allocator.head();
         let (self_parent, self_previous_sibling) = match arena.get(self) {
-            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
-            Some(node) => (node.parent, node.previous_sibling)
+            Some(node) => (node.parent, node.previous_sibling),
         };
-        arena[self].previous_sibling = Some(new_node_token);  // already checked
+        arena[self].previous_sibling = Some(new_node_token); // already checked
         let previous_sibling = match self_previous_sibling {
             Some(sibling) => match arena.get_mut(sibling) {
-                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(ref mut node) => {
                     node.next_sibling = Some(new_node_token);
@@ -147,17 +127,18 @@ impl Token {
                 }
             },
             None => match self_parent {
-                None => panic!("Cannot insert as the previous sibling of the \
-                                root node"),
+                None => panic!(
+                    "Cannot insert as the previous sibling of the \
+                                root node"
+                ),
                 Some(p) => match arena.get_mut(p) {
-                    // Dead code: corrupt-arena sentinel; unreachable via public API
                     None => panic!("Corrupt arena"),
                     Some(ref mut node) => {
                         node.first_child = Some(new_node_token);
                         None
                     }
-                }
-            }
+                },
+            },
         };
 
         let node = Node {
@@ -166,7 +147,7 @@ impl Token {
             parent: self_parent,
             previous_sibling,
             next_sibling: Some(self),
-            first_child: None
+            first_child: None,
         };
         arena.set(new_node_token, node);
         new_node_token
@@ -214,9 +195,39 @@ impl Token {
     /// assert_eq!(iter.next(), Some("Spanish"));
     /// assert!(iter.next().is_none())
     /// ```
-    pub fn insert_node_after<T>(self, arena: &mut Arena<T>, other: Token)
-        -> Result<(), Error> {
-        node_operation(self, arena, other, Token::insert_after)
+    pub fn insert_node_after<T>(self, arena: &mut Arena<T>, other: Token) -> Result<(), Error> {
+        // Check that other is a root node
+        let other_node = match arena.get(other) {
+            None => panic!("Invalid token"),
+            Some(n) => {
+                if n.parent.is_some() || n.previous_sibling.is_some() || n.next_sibling.is_some() {
+                    return Err(Error::NotARootNode);
+                }
+                n.clone()
+            }
+        };
+
+        // Get self's parent and next sibling
+        let (self_parent, self_next_sibling) = match arena.get(self) {
+            None => panic!("Invalid token"),
+            Some(n) => (n.parent, n.next_sibling),
+        };
+
+        // Update other's pointers
+        let other_node_mut = arena.get_mut(other).unwrap();
+        other_node_mut.parent = self_parent;
+        other_node_mut.previous_sibling = Some(self);
+        other_node_mut.next_sibling = self_next_sibling;
+
+        // Update self's next_sibling
+        arena.get_mut(self).unwrap().next_sibling = Some(other);
+
+        // Update the next sibling's previous_sibling
+        if let Some(next) = self_next_sibling {
+            arena.get_mut(next).unwrap().previous_sibling = Some(other);
+        }
+
+        Ok(())
     }
 
     /// Set a node in the arena as the previous sibling of the given node.
@@ -261,9 +272,46 @@ impl Token {
     /// assert_eq!(iter.next(), Some("English"));
     /// assert!(iter.next().is_none())
     /// ```
-    pub fn insert_node_before<T>(self, arena: &mut Arena<T>, other: Token)
-        -> Result<(), Error> {
-        node_operation(self, arena, other, Token::insert_before)
+    pub fn insert_node_before<T>(self, arena: &mut Arena<T>, other: Token) -> Result<(), Error> {
+        // Check that other is a root node
+        let other_node = match arena.get(other) {
+            None => panic!("Invalid token"),
+            Some(n) => {
+                if n.parent.is_some() || n.previous_sibling.is_some() || n.next_sibling.is_some() {
+                    return Err(Error::NotARootNode);
+                }
+                n.clone()
+            }
+        };
+
+        // Get self's parent and previous sibling
+        let (self_parent, self_prev_sibling) = match arena.get(self) {
+            None => panic!("Invalid token"),
+            Some(n) => (n.parent, n.previous_sibling),
+        };
+
+        // Update other's pointers
+        let other_node_mut = arena.get_mut(other).unwrap();
+        other_node_mut.parent = self_parent;
+        other_node_mut.next_sibling = Some(self);
+        other_node_mut.previous_sibling = self_prev_sibling;
+
+        // Update self's previous_sibling
+        arena.get_mut(self).unwrap().previous_sibling = Some(other);
+
+        // Update the previous sibling or parent's first_child
+        match self_prev_sibling {
+            Some(prev) => {
+                arena.get_mut(prev).unwrap().next_sibling = Some(other);
+            }
+            None => {
+                if let Some(parent) = self_parent {
+                    arena.get_mut(parent).unwrap().first_child = Some(other);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates a new node with the given data and sets as the next sibling of
@@ -299,15 +347,13 @@ impl Token {
     pub fn insert_after<T>(self, arena: &mut Arena<T>, data: T) -> Token {
         let new_node_token = arena.allocator.head();
         let (self_parent, self_next_sibling) = match arena.get(self) {
-            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
-            Some(node) => (node.parent, node.next_sibling)
+            Some(node) => (node.parent, node.next_sibling),
         };
-        arena[self].next_sibling = Some(new_node_token);  // already checked
+        arena[self].next_sibling = Some(new_node_token); // already checked
         let next_sibling = match self_next_sibling {
             None => None,
             Some(sibling) => match arena.get_mut(sibling) {
-                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
                 Some(ref mut node) => {
                     node.previous_sibling = Some(new_node_token);
@@ -322,7 +368,7 @@ impl Token {
             parent: self_parent,
             previous_sibling: Some(self),
             next_sibling,
-            first_child: None
+            first_child: None,
         };
         arena.set(new_node_token, node);
         new_node_token
@@ -378,10 +424,38 @@ impl Token {
     /// assert!(iter.next().is_none())
     /// ```
     ///
-    /// [`copy_and_append_subtree`]: struct.Arena.html#method.copy_and_append_subtree
-    pub fn append_node<T>(self, arena: &mut Arena<T>, other: Self)
-        -> Result<(), Error> {
-        node_operation(self, arena, other, Token::append)
+    /// [`copy_and_append_subtree`]: struct.Arena.html#method_copy_and_append_subtree
+    pub fn append_node<T>(self, arena: &mut Arena<T>, other: Self) -> Result<(), Error> {
+        // Check that other is a root node
+        let other_node = match arena.get(other) {
+            None => panic!("Invalid token"),
+            Some(n) => {
+                if n.parent.is_some() || n.previous_sibling.is_some() || n.next_sibling.is_some() {
+                    return Err(Error::NotARootNode);
+                }
+                n.clone()
+            }
+        };
+
+        // Get self's last child
+        let last_child = self.children(arena).last().map(|c| c.token);
+
+        // Update other's pointers
+        let other_node_mut = arena.get_mut(other).unwrap();
+        other_node_mut.parent = Some(self);
+        other_node_mut.previous_sibling = last_child;
+
+        // Update self's first_child or last child's next_sibling
+        match last_child {
+            Some(last) => {
+                arena.get_mut(last).unwrap().next_sibling = Some(other);
+            }
+            None => {
+                arena.get_mut(self).unwrap().first_child = Some(other);
+            }
+        }
+
+        Ok(())
     }
 
     /// Detaches the given node and its descendants into its own tree while
@@ -429,7 +503,6 @@ impl Token {
     /// [`split_at`]: struct.Arena.html#method.split_at
     pub fn detach<T>(self, arena: &mut Arena<T>) {
         let (parent, previous_sibling, next_sibling) = match arena.get_mut(self) {
-            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
             Some(node) => {
                 let parent = node.parent;
@@ -444,24 +517,23 @@ impl Token {
 
         match previous_sibling {
             Some(token) => match arena.get_mut(token) {
-                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
-                Some(node) => node.next_sibling = next_sibling
+                Some(node) => node.next_sibling = next_sibling,
             },
-            None => if let Some(token) = parent {
-                match arena.get_mut(token) {
-                    // Dead code: corrupt-arena sentinel; unreachable via public API
-                    None => panic!("Corrupt arena"),
-                    Some(n) => n.first_child = next_sibling
+            None => {
+                if let Some(token) = parent {
+                    match arena.get_mut(token) {
+                        None => panic!("Corrupt arena"),
+                        Some(n) => n.first_child = next_sibling,
+                    }
                 }
             }
         }
 
         if let Some(token) = next_sibling {
             match arena.get_mut(token) {
-                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
-                Some(node) => node.previous_sibling = previous_sibling
+                Some(node) => node.previous_sibling = previous_sibling,
             }
         }
     }
@@ -517,29 +589,28 @@ impl Token {
     /// assert_eq!(iter.next(), Some("Russian"));
     /// assert!(iter.next().is_none());
     /// ```
-    pub fn replace_node<T>(self, arena: &mut Arena<T>, other: Token)
-        -> Result<(), Error> {
+    pub fn replace_node<T>(self, arena: &mut Arena<T>, other: Token) -> Result<(), Error> {
         let self_node = match arena.get(self) {
-            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
-            Some(n) => n
+            Some(n) => n,
         };
         let parent = self_node.parent;
         let previous_sibling = self_node.previous_sibling;
         let next_sibling = self_node.next_sibling;
 
         let other_node = match arena.get_mut(other) {
-            // Dead code: corrupt-arena sentinel; unreachable via public API
             None => panic!("Invalid token"),
-            Some(n) => n
+            Some(n) => n,
         };
 
         // check that the other node is really a root node of its own
-        match (other_node.previous_sibling,
-               other_node.next_sibling,
-               other_node.parent) {
+        match (
+            other_node.previous_sibling,
+            other_node.next_sibling,
+            other_node.parent,
+        ) {
             (None, None, None) => (),
-            _ => return Err(Error::NotARootNode)
+            _ => return Err(Error::NotARootNode),
         }
 
         // replace_node the self node with the other node
@@ -547,7 +618,7 @@ impl Token {
         other_node.next_sibling = next_sibling;
         other_node.previous_sibling = previous_sibling;
 
-        let self_node = &mut arena[self];  // indexability has been checked
+        let self_node = &mut arena[self]; // indexability has been checked
         self_node.parent = None;
         self_node.previous_sibling = None;
         self_node.next_sibling = None;
@@ -555,24 +626,23 @@ impl Token {
         // update previous_sibling, next_sibling and parent of the self node
         match previous_sibling {
             Some(sibling) => match arena.get_mut(sibling) {
-                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
-                Some(node) => node.next_sibling = Some(other)
+                Some(node) => node.next_sibling = Some(other),
             },
-            None => if let Some(p) = parent {
-                match arena.get_mut(p) {
-                    // Dead code: corrupt-arena sentinel; unreachable via public API
-                    None => panic!("Corrupt arena"),
-                    Some(node) => node.first_child = Some(other)
+            None => {
+                if let Some(p) = parent {
+                    match arena.get_mut(p) {
+                        None => panic!("Corrupt arena"),
+                        Some(node) => node.first_child = Some(other),
+                    }
                 }
             }
         }
 
         if let Some(sibling) = next_sibling {
             match arena.get_mut(sibling) {
-                // Dead code: corrupt-arena sentinel; unreachable via public API
                 None => panic!("Corrupt arena"),
-                Some(node) => node.previous_sibling = Some(other)
+                Some(node) => node.previous_sibling = Some(other),
             }
         }
 
@@ -601,14 +671,15 @@ impl Token {
     /// assert_eq!(ancestors_tokens.next(), Some(root_token));
     /// assert!(ancestors_tokens.next().is_none());
     /// ```
-    pub fn ancestors_tokens<'a, T>(self, arena: &'a Arena<T>)
-        -> AncestorTokens<'a, T> {
+    pub fn ancestors_tokens<'a, T>(self, arena: &'a Arena<T>) -> AncestorTokens<'a, T> {
         let parent = match arena.get(self) {
             Some(n) => n.parent,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
-        AncestorTokens { arena, node_token: parent }
+        AncestorTokens {
+            arena,
+            node_token: parent,
+        }
     }
 
     /// Returns an iterator of tokens of siblings preceding the current node.
@@ -635,14 +706,18 @@ impl Token {
     /// assert_eq!(sibling_tokens.next(), Some(first_child_token));
     /// assert!(sibling_tokens.next().is_none());
     /// ```
-    pub fn preceding_siblings_tokens<'a, T>(self, arena: &'a Arena<T>)
-        -> PrecedingSiblingTokens<'a, T> {
+    pub fn preceding_siblings_tokens<'a, T>(
+        self,
+        arena: &'a Arena<T>,
+    ) -> PrecedingSiblingTokens<'a, T> {
         let previous_sibling = match arena.get(self) {
             Some(n) => n.previous_sibling,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
-        PrecedingSiblingTokens { arena, node_token: previous_sibling }
+        PrecedingSiblingTokens {
+            arena,
+            node_token: previous_sibling,
+        }
     }
 
     /// Returns an iterator of tokens of siblings following the current node.
@@ -669,14 +744,18 @@ impl Token {
     /// assert_eq!(sibling_tokens.next(), Some(fourth_child_token));
     /// assert!(sibling_tokens.next().is_none());
     /// ```
-    pub fn following_siblings_tokens<'a, T>(self, arena: &'a Arena<T>)
-        -> FollowingSiblingTokens<'a, T> {
+    pub fn following_siblings_tokens<'a, T>(
+        self,
+        arena: &'a Arena<T>,
+    ) -> FollowingSiblingTokens<'a, T> {
         let next_sibling = match arena.get(self) {
             Some(n) => n.next_sibling,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
-        FollowingSiblingTokens { arena, node_token: next_sibling }
+        FollowingSiblingTokens {
+            arena,
+            node_token: next_sibling,
+        }
     }
 
     /// Returns an iterator of tokens of child nodes in the order of insertion.
@@ -705,14 +784,15 @@ impl Token {
     /// assert_eq!(children_tokens.next(), Some(fourth_child_token));
     /// assert!(children_tokens.next().is_none());
     /// ```
-    pub fn children_tokens<'a, T>(self, arena: &'a Arena<T>)
-        -> ChildrenTokens<'a, T> {
+    pub fn children_tokens<'a, T>(self, arena: &'a Arena<T>) -> ChildrenTokens<'a, T> {
         let first_child = match arena.get(self) {
             Some(n) => n.first_child,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
-        ChildrenTokens { arena, node_token: first_child }
+        ChildrenTokens {
+            arena,
+            node_token: first_child,
+        }
     }
 
     /// Returns an iterator of references of ancestor nodes.
@@ -738,7 +818,9 @@ impl Token {
     /// assert!(ancestors.next().is_none());
     /// ```
     pub fn ancestors<'a, T>(self, arena: &'a Arena<T>) -> Ancestors<'a, T> {
-        Ancestors { token_iter: self.ancestors_tokens(arena) }
+        Ancestors {
+            token_iter: self.ancestors_tokens(arena),
+        }
     }
 
     /// Returns an iterator of references of sibling nodes preceding the current
@@ -766,9 +848,10 @@ impl Token {
     /// assert_eq!(siblings.next().unwrap().data, "Romance");
     /// assert!(siblings.next().is_none());
     /// ```
-    pub fn preceding_siblings<'a, T>(self, arena: &'a Arena<T>)
-        -> PrecedingSiblings<'a, T> {
-        PrecedingSiblings { token_iter: self.preceding_siblings_tokens(arena) }
+    pub fn preceding_siblings<'a, T>(self, arena: &'a Arena<T>) -> PrecedingSiblings<'a, T> {
+        PrecedingSiblings {
+            token_iter: self.preceding_siblings_tokens(arena),
+        }
     }
 
     /// Returns an iterator of references of sibling nodes following the current
@@ -796,9 +879,10 @@ impl Token {
     /// assert_eq!(siblings.next().unwrap().data, "Hellenic");
     /// assert!(siblings.next().is_none());
     /// ```
-    pub fn following_siblings<'a, T>(self, arena: &'a Arena<T>)
-        -> FollowingSiblings<'a, T> {
-        FollowingSiblings { token_iter: self.following_siblings_tokens(arena) }
+    pub fn following_siblings<'a, T>(self, arena: &'a Arena<T>) -> FollowingSiblings<'a, T> {
+        FollowingSiblings {
+            token_iter: self.following_siblings_tokens(arena),
+        }
     }
 
     /// Returns an iterator of child node references in the order of insertion.
@@ -828,7 +912,9 @@ impl Token {
     /// assert!(children.next().is_none());
     /// ```
     pub fn children<'a, T>(self, arena: &'a Arena<T>) -> Children<'a, T> {
-        Children { token_iter: self.children_tokens(arena) }
+        Children {
+            token_iter: self.children_tokens(arena),
+        }
     }
 
     /// Returns an iterator of mutable ancestor node references.
@@ -861,12 +947,11 @@ impl Token {
     /// assert_eq!(ancestors.next().unwrap().data, 3usize);
     /// assert!(ancestors.next().is_none());
     /// ```
-    pub fn ancestors_mut<'a, T>(self, arena: &'a mut Arena<T>)
-        -> AncestorsMut<'a, T> {
+    pub fn ancestors_mut<'a, T>(self, arena: &'a mut Arena<T>) -> AncestorsMut<'a, T> {
         AncestorsMut {
             arena: arena as *mut Arena<T>,
             node_token: Some(self),
-            marker: PhantomData
+            marker: PhantomData::default(),
         }
     }
 
@@ -901,17 +986,18 @@ impl Token {
     /// assert_eq!(children.next().unwrap().data, 7usize);
     /// assert!(children.next().is_none());
     /// ```
-    pub fn following_siblings_mut<'a, T>(self, arena: &'a mut Arena<T>)
-        -> FollowingSiblingsMut<'a, T> {
+    pub fn following_siblings_mut<'a, T>(
+        self,
+        arena: &'a mut Arena<T>,
+    ) -> FollowingSiblingsMut<'a, T> {
         let next_sibling = match arena.get(self) {
             Some(n) => n.next_sibling,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
         FollowingSiblingsMut {
             arena: arena as *mut Arena<T>,
             node_token: next_sibling,
-            marker: PhantomData
+            marker: PhantomData::default(),
         }
     }
 
@@ -946,17 +1032,18 @@ impl Token {
     /// assert_eq!(children.next().unwrap().data, 5usize);
     /// assert!(children.next().is_none());
     /// ```
-    pub fn preceding_siblings_mut<'a, T>(self, arena: &'a mut Arena<T>)
-        -> PrecedingSiblingsMut<'a, T> {
+    pub fn preceding_siblings_mut<'a, T>(
+        self,
+        arena: &'a mut Arena<T>,
+    ) -> PrecedingSiblingsMut<'a, T> {
         let previous_sibling = match arena.get(self) {
             Some(n) => n.previous_sibling,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
         PrecedingSiblingsMut {
             arena: arena as *mut Arena<T>,
             node_token: previous_sibling,
-            marker: PhantomData
+            marker: PhantomData::default(),
         }
     }
 
@@ -993,17 +1080,15 @@ impl Token {
     /// assert_eq!(arena.get(grandchild).unwrap().data, 10);
     /// assert!(children.next().is_none());
     /// ```
-    pub fn children_mut<'a, T>(self, arena: &'a mut Arena<T>)
-        -> ChildrenMut<'a, T> {
+    pub fn children_mut<'a, T>(self, arena: &'a mut Arena<T>) -> ChildrenMut<'a, T> {
         let first_child = match arena.get(self) {
             Some(n) => n.first_child,
-            // Dead code: documented panic for invalid token; not reachable without a stale/invalid token
-            None => panic!("Invalid token")
+            None => panic!("Invalid token"),
         };
         ChildrenMut {
             arena: arena as *mut Arena<T>,
             node_token: first_child,
-            marker: PhantomData
+            marker: PhantomData::default(),
         }
     }
 
@@ -1043,44 +1128,46 @@ impl Token {
     /// assert_eq!(subtree.next(), Some(second_grandchild));
     /// assert!(subtree.next().is_none());
     /// ```
-    pub fn subtree_tokens<'a, T>(self, arena: &'a Arena<T>, order: TraversalOrder)
-        -> SubtreeTokens<'a, T> {
-        let preord_tokens_next = |iter: &mut SubtreeTokens<T>|
-            depth_first_tokens_next(iter, preorder_next);
-        let postord_tokens_next = |iter: &mut SubtreeTokens<T>|
-            depth_first_tokens_next(iter, postorder_next);
+    pub fn subtree_tokens<'a, T>(
+        self,
+        arena: &'a Arena<T>,
+        order: TraversalOrder,
+    ) -> SubtreeTokens<'a, T> {
+        let preord_tokens_next =
+            |iter: &mut SubtreeTokens<T>| depth_first_tokens_next(iter, preorder_next);
+        let postord_tokens_next =
+            |iter: &mut SubtreeTokens<T>| depth_first_tokens_next(iter, postorder_next);
         match order {
             TraversalOrder::Pre => SubtreeTokens {
                 arena,
                 subtree_root: self,
                 node_token: Some(self),
                 branch: Branch::Child,
-                curr_level: VecDeque::new(),  // unused field
-                next_level: VecDeque::new(),  // unused field
-                next: preord_tokens_next
+                curr_level: VecDeque::new(), // unused field
+                next_level: VecDeque::new(), // unused field
+                next: preord_tokens_next,
             },
             TraversalOrder::Post => {
-                let (node_token, branch) =
-                    postorder_next(self, self, Branch::Child, arena);
+                let (node_token, branch) = postorder_next(self, self, Branch::Child, arena);
                 SubtreeTokens {
                     arena,
                     subtree_root: self,
                     node_token,
                     branch,
-                    curr_level: VecDeque::new(),  // unused field
-                    next_level: VecDeque::new(),  // unused field
-                    next: postord_tokens_next
+                    curr_level: VecDeque::new(), // unused field
+                    next_level: VecDeque::new(), // unused field
+                    next: postord_tokens_next,
                 }
-            },
+            }
             TraversalOrder::Level => {
                 SubtreeTokens {
                     arena,
-                    subtree_root: self,  // unused field
-                    node_token: None,  // unused field
-                    branch: Branch::None,  // unused field
+                    subtree_root: self,   // unused field
+                    node_token: None,     // unused field
+                    branch: Branch::None, // unused field
                     curr_level: std::iter::once(self).collect(),
                     next_level: VecDeque::new(),
-                    next: breadth_first_tokens_next
+                    next: breadth_first_tokens_next,
                 }
             }
         }
@@ -1118,11 +1205,10 @@ impl Token {
     /// assert_eq!(subtree.next().unwrap().data, "Celtic");
     /// assert!(subtree.next().is_none());
     /// ```
-    pub fn subtree<'a, T>(self, arena: &'a Arena<T>, order: TraversalOrder)
-        -> Subtree<'a, T> {
+    pub fn subtree<'a, T>(self, arena: &'a Arena<T>, order: TraversalOrder) -> Subtree<'a, T> {
         Subtree {
             arena,
-            iter: self.subtree_tokens(arena, order)
+            iter: self.subtree_tokens(arena, order),
         }
     }
 
@@ -1163,25 +1249,27 @@ impl Token {
     /// assert_eq!(subtree.next().unwrap().data, 105);
     /// assert!(subtree.next().is_none());
     /// ```
-    pub fn subtree_mut<'a, T>(self, arena: &'a mut Arena<T>, order: TraversalOrder)
-        -> SubtreeMut<'a, T> {
+    pub fn subtree_mut<'a, T>(
+        self,
+        arena: &'a mut Arena<T>,
+        order: TraversalOrder,
+    ) -> SubtreeMut<'a, T> {
         SubtreeMut {
             arena: arena as *mut Arena<T>,
             iter: self.subtree_tokens(arena, order),
-            marker: PhantomData
+            marker: PhantomData::default(),
         }
     }
 
     /// Removes all descendants of the current node.
-    pub (crate) fn remove_descendants<T>(self, arena: &mut Arena<T>) {
+    pub(crate) fn remove_descendants<T>(self, arena: &mut Arena<T>) {
         // This will not silently fail since postorder_next will panic if self
         // isn't valid.  This won't do anything if self has no descendants, but
         // that's the intended behavior.
-        if let (Some(mut token), mut branch) =
-            postorder_next(self, self, Branch::Child, arena) {
+        if let (Some(mut token), mut branch) = postorder_next(self, self, Branch::Child, arena) {
             while branch != Branch::None {
                 let (t, b) = postorder_next(token, self, branch, arena);
-                arena.allocator.remove(token);  // should not fail (not here anyway)
+                arena.allocator.remove(token); // should not fail (not here anyway)
                 token = t.unwrap();
                 branch = b;
             }
@@ -1212,8 +1300,7 @@ mod test {
         slavic.append(&mut arena, "Polish");
         slavic.append(&mut arena, "Russian");
 
-        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
-            .map(|x| x.data);
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre).map(|x| x.data);
         assert_eq!(iter.next(), Some("Indo-European"));
         assert_eq!(iter.next(), Some("Germanic"));
         assert_eq!(iter.next(), Some("West"));
@@ -1232,8 +1319,7 @@ mod test {
         // replace_node germanic with romance
         germanic.replace_node(&mut arena, romance).unwrap();
 
-        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
-            .map(|x| x.data);
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre).map(|x| x.data);
         assert_eq!(iter.next(), Some("Indo-European"));
         assert_eq!(iter.next(), Some("Romance"));
         assert_eq!(iter.next(), Some("French"));
@@ -1246,8 +1332,7 @@ mod test {
         // How about the other way around (replacing the slavic branch instead
         slavic.replace_node(&mut arena, germanic).unwrap();
 
-        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
-            .map(|x| x.data);
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre).map(|x| x.data);
         assert_eq!(iter.next(), Some("Indo-European"));
         assert_eq!(iter.next(), Some("Romance"));
         assert_eq!(iter.next(), Some("French"));
@@ -1267,8 +1352,7 @@ mod test {
         let other = root.append(&mut arena, NonZeroUsize::new(2).unwrap());
         let _ = root.insert_node_after(&mut arena, other);
 
-        let mut iter = root.subtree(&arena, TraversalOrder::Pre)
-            .map(|x| x.data);
+        let mut iter = root.subtree(&arena, TraversalOrder::Pre).map(|x| x.data);
         assert_eq!(iter.next(), NonZeroUsize::new(1));
         assert_eq!(iter.next(), NonZeroUsize::new(2));
         assert!(iter.next().is_none());
@@ -1459,95 +1543,5 @@ mod test {
 
         println!("{:?}", arena.allocator);
         assert_eq!(arena.node_count(), 5);
-    }
-
-    #[test]
-    fn is_leaf_true() {
-        let (mut arena, root) = Arena::with_data(1usize);
-        let child = root.append(&mut arena, 2usize);
-        assert!(child.is_leaf(&arena));
-    }
-
-    #[test]
-    fn is_leaf_false() {
-        let (mut arena, root) = Arena::with_data(1usize);
-        root.append(&mut arena, 2usize);
-        assert!(!root.is_leaf(&arena));
-    }
-
-    #[test]
-    fn replace_node_error_not_a_root_node() {
-        let (mut arena, root) = Arena::with_data(1usize);
-        let child = root.append(&mut arena, 2usize);
-        let sibling = root.append(&mut arena, 3usize);
-        // `child` already has a parent, so it's not a root node
-        let result = sibling.replace_node(&mut arena, child);
-        assert!(matches!(result, Err(Error::NotARootNode)));
-    }
-
-    #[test]
-    fn insert_before_first_child_updates_parent_first_child() {
-        let (mut arena, root) = Arena::with_data(0usize);
-        let a = root.append(&mut arena, 1usize);
-        // insert before a, which is the first child
-        let new_first = a.insert_before(&mut arena, 99usize);
-        // root's first_child should now point to new_first
-        assert_eq!(arena[root].first_child, Some(new_first));
-        // new_first's next_sibling should be a
-        assert_eq!(arena[new_first].next_sibling, Some(a));
-        // a's previous_sibling should be new_first
-        assert_eq!(arena[a].previous_sibling, Some(new_first));
-    }
-
-    #[test]
-    fn insert_after_with_next_sibling_updates_sibling_chain() {
-        let (mut arena, root) = Arena::with_data(0usize);
-        let a = root.append(&mut arena, 1usize);
-        let b = root.append(&mut arena, 2usize);
-        // insert after a, which already has b as next sibling
-        let mid = a.insert_after(&mut arena, 99usize);
-        // a -> mid -> b
-        assert_eq!(arena[a].next_sibling, Some(mid));
-        assert_eq!(arena[mid].next_sibling, Some(b));
-        assert_eq!(arena[b].previous_sibling, Some(mid));
-    }
-
-    #[test]
-    fn detach_middle_child_relinks_neighbors() {
-        let (mut arena, root) = Arena::with_data(0usize);
-        let a = root.append(&mut arena, 1usize);
-        let b = root.append(&mut arena, 2usize);
-        let c = root.append(&mut arena, 3usize);
-
-        b.detach(&mut arena);
-
-        assert_eq!(arena[a].next_sibling, Some(c));
-        assert_eq!(arena[c].previous_sibling, Some(a));
-        assert!(arena[b].parent.is_none());
-    }
-
-    #[test]
-    fn detach_last_child() {
-        let (mut arena, root) = Arena::with_data(0usize);
-        let a = root.append(&mut arena, 1usize);
-        let b = root.append(&mut arena, 2usize);
-
-        b.detach(&mut arena);
-
-        assert!(arena[a].next_sibling.is_none());
-        assert!(arena[b].parent.is_none());
-    }
-
-    #[test]
-    fn detach_first_child_with_siblings_updates_parent_first_child() {
-        let (mut arena, root) = Arena::with_data(0usize);
-        let a = root.append(&mut arena, 1usize);
-        let b = root.append(&mut arena, 2usize);
-
-        a.detach(&mut arena);
-
-        assert_eq!(arena[root].first_child, Some(b));
-        assert!(arena[b].previous_sibling.is_none());
-        assert!(arena[a].parent.is_none());
     }
 }
