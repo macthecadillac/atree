@@ -1572,6 +1572,54 @@ mod test {
     }
 
     #[test]
+    fn insert_node_after_with_next_sibling_updates_sibling_chain() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+        let c = arena.new_node(3usize);
+        // insert c between a and b
+        assert!(a.insert_node_after(&mut arena, c).is_ok());
+        assert_eq!(arena[a].next_sibling, Some(c));
+        assert_eq!(arena[c].next_sibling, Some(b));
+        assert_eq!(arena[b].previous_sibling, Some(c));
+        assert_eq!(arena[c].previous_sibling, Some(a));
+        assert_eq!(arena[c].parent, Some(root));
+    }
+
+    #[test]
+    fn insert_node_before_inserts_between_siblings() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        let b = root.append(&mut arena, 2usize);
+        let c = arena.new_node(3usize);
+        // insert c between a and b
+        assert!(b.insert_node_before(&mut arena, c).is_ok());
+        assert_eq!(arena[a].next_sibling, Some(c));
+        assert_eq!(arena[c].previous_sibling, Some(a));
+        assert_eq!(arena[c].next_sibling, Some(b));
+        assert_eq!(arena[b].previous_sibling, Some(c));
+        assert_eq!(arena[c].parent, Some(root));
+    }
+
+    #[test]
+    fn insert_node_before_returns_not_a_root_node_error() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        // `a` already has a parent, so it's not a root node
+        let result = root.insert_node_before(&mut arena, a);
+        assert!(matches!(result, Err(Error::NotARootNode)));
+    }
+
+    #[test]
+    fn append_node_returns_not_a_root_node_error() {
+        let (mut arena, root) = Arena::with_data(0usize);
+        let a = root.append(&mut arena, 1usize);
+        // `a` already has a parent, so it's not a root node
+        let result = root.append_node(&mut arena, a);
+        assert!(matches!(result, Err(Error::NotARootNode)));
+    }
+
+    #[test]
     fn insert_before_first_child_updates_parent_first_child() {
         let (mut arena, root) = Arena::with_data(0usize);
         let a = root.append(&mut arena, 1usize);
