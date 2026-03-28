@@ -2,7 +2,6 @@
 use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
-use std::mem::MaybeUninit;
 
 #[cfg(feature = "serde")]
 use serde::{Serialize, Deserialize};
@@ -17,22 +16,6 @@ use crate::arena::Arena;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Token {
     pub (crate) index: NonZeroUsize
-}
-
-#[allow(clippy::uninit_assumed_init)]
-fn node_operation<T>(
-    self_token: Token,
-    arena: &mut Arena<T>,
-    other_token: Token,
-    func: fn(Token, &mut Arena<T>, T) -> Token
-) -> Result<(), Error> {
-    // only a placeholder to get around some trait requirements so I can
-    // reuse code. The uninitialized data will be removed so no risk here.
-    let dummy_data: T = unsafe { MaybeUninit::uninit().assume_init() };
-    let token = func(self_token, arena, dummy_data);
-    token.replace_node(arena, other_token)?;
-    arena.remove(token);  // remove uninitialized data
-    Ok(())
 }
 
 impl Token {
@@ -216,7 +199,36 @@ impl Token {
     /// ```
     pub fn insert_node_after<T>(self, arena: &mut Arena<T>, other: Token)
         -> Result<(), Error> {
-        node_operation(self, arena, other, Token::insert_after)
+        // Panics if the arena is corrupt; unreachable via public API
+        let self_node = arena.get(self).expect("Invalid token");
+        let parent = self_node.parent;
+        let next_sibling = self_node.next_sibling;
+
+        let other_node = arena.get_mut(other).expect("Invalid token");
+
+        // check that the other node is really a root node of its own
+        match (other_node.previous_sibling,
+               other_node.next_sibling,
+               other_node.parent) {
+            (None, None, None) => (),
+            _ => return Err(Error::NotARootNode)
+        }
+
+        // Update other's pointers
+        other_node.parent = parent;
+        other_node.previous_sibling = Some(self);
+        other_node.next_sibling = next_sibling;
+
+        // Update self's next_sibling. Indexability has been checked
+        arena[self].next_sibling = Some(other);
+
+        // Update the next sibling's previous_sibling
+        if let Some(next) = next_sibling {
+            let orig_next_node = arena.get_mut(next).expect("Corrupt arena");
+            orig_next_node.previous_sibling = Some(other);
+        }
+
+        Ok(())
     }
 
     /// Set a node in the arena as the previous sibling of the given node.
@@ -263,7 +275,42 @@ impl Token {
     /// ```
     pub fn insert_node_before<T>(self, arena: &mut Arena<T>, other: Token)
         -> Result<(), Error> {
-        node_operation(self, arena, other, Token::insert_before)
+        // Panics if the arena is corrupt; unreachable via public API
+        let self_node = arena.get(self).expect("Invalid token");
+        let parent = self_node.parent;
+        let previous_sibling = self_node.previous_sibling;
+
+        let other_node = arena.get_mut(other).expect("Invalid token");
+
+        // check that the other node is really a root node of its own
+        match (other_node.previous_sibling,
+               other_node.next_sibling,
+               other_node.parent) {
+            (None, None, None) => (),
+            _ => return Err(Error::NotARootNode)
+        }
+
+        // Update other's pointers
+        other_node.parent = parent;
+        other_node.previous_sibling = previous_sibling;
+        other_node.next_sibling = Some(self);
+
+        // Update self's previous_sibling. Indexability has been checked
+        arena[self].previous_sibling = Some(other);
+
+        // Update the previous sibling or parent's first_child
+        match previous_sibling {
+            Some(prev) => {
+                let p = arena.get_mut(prev).expect("Corrupt arena");
+                p.next_sibling = Some(other)
+            },
+            None => if let Some(pt) = parent {
+                let p = arena.get_mut(pt).expect("Corrupt arena");
+                p.first_child = Some(other);
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates a new node with the given data and sets as the next sibling of
@@ -381,7 +428,37 @@ impl Token {
     /// [`copy_and_append_subtree`]: struct.Arena.html#method.copy_and_append_subtree
     pub fn append_node<T>(self, arena: &mut Arena<T>, other: Self)
         -> Result<(), Error> {
-        node_operation(self, arena, other, Token::append)
+        // Panics if the arena is corrupt; unreachable via public API
+        let other_node = arena.get_mut(other).expect("Invalid token");
+
+        // check that the other node is really a root node of its own
+        match (other_node.previous_sibling,
+               other_node.next_sibling,
+               other_node.parent) {
+            (None, None, None) => (),
+            _ => return Err(Error::NotARootNode)
+        }
+
+        // Get self's last child
+        let last_child = self.children(arena).last().map(|c| c.token);
+
+        // Update other's pointers
+        let other_node = arena.get_mut(other).expect("Invalid token");
+        other_node.parent = Some(self);
+        other_node.previous_sibling = last_child;
+
+        // Update self's first_child or last child's next_sibling
+        match last_child {
+            Some(last) => {
+                let l = arena.get_mut(last).expect("Corrupt arena");
+                l.next_sibling = Some(other);
+            }
+            None => {
+                arena[self].first_child = Some(other);
+            }
+        }
+
+        Ok(())
     }
 
     /// Detaches the given node and its descendants into its own tree while
@@ -515,6 +592,15 @@ impl Token {
     /// assert_eq!(iter.next(), Some("Slavic"));
     /// assert_eq!(iter.next(), Some("Polish"));
     /// assert_eq!(iter.next(), Some("Russian"));
+    /// assert!(iter.next().is_none());
+    ///
+    /// // the germanic tree is still around
+    /// let mut iter = germanic.subtree(&arena, TraversalOrder::Pre)
+    ///     .map(|x| x.data);
+    /// assert_eq!(iter.next(), Some("Germanic"));
+    /// assert_eq!(iter.next(), Some("West"));
+    /// assert_eq!(iter.next(), Some("Scots"));
+    /// assert_eq!(iter.next(), Some("English"));
     /// assert!(iter.next().is_none());
     /// ```
     pub fn replace_node<T>(self, arena: &mut Arena<T>, other: Token)
